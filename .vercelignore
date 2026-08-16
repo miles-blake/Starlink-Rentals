@@ -1,0 +1,7 @@
+.env
+.env.local
+.env.*.local
+starlink-rental-blueprint.md
+e2e
+playwright-report
+test-results
