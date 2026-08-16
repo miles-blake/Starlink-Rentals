@@ -41,11 +41,15 @@ export default function Home() {
           account required.
         </p>
         <div className="mt-8 flex flex-col items-center gap-2">
-          <Button size="lg" disabled>
-            Get a quote — coming soon
+          <Button
+            render={<Link href="/quote" />}
+            nativeButton={false}
+            size="lg"
+          >
+            Get a quote
           </Button>
           <p className="text-muted-foreground font-mono text-xs">
-            Booking opens in a future phase of the build.
+            Reservations open in a future phase of the build.
           </p>
         </div>
       </main>
