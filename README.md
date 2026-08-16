@@ -1,0 +1,50 @@
+# Starlink Rentals
+
+A single-operator Starlink kit rental platform: instant address/date eligibility, transparent quoting, availability holds, e-sign rental agreement, manual Venmo payment, and an admin portal for running the business day to day.
+
+Full build plan: [starlink-rental-blueprint.md](./starlink-rental-blueprint.md). Built phase by phase — see that document for architecture decisions, the data model, and the phased task list.
+
+## Stack
+
+Next.js (App Router) + TypeScript, Tailwind + shadcn/ui, Prisma + PostgreSQL, Auth.js (credentials), Vitest, Playwright, GitHub Actions, Vercel.
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env   # fill in DATABASE_URL, NEXTAUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
+npx prisma migrate dev
+npx prisma db seed     # creates the first admin user from ADMIN_EMAIL / ADMIN_PASSWORD
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) for the public site, or [http://localhost:3000/admin](http://localhost:3000/admin) for the admin login.
+
+## Scripts
+
+| Script                            | What it does                                                  |
+| --------------------------------- | ------------------------------------------------------------- |
+| `npm run dev`                     | Start the dev server                                          |
+| `npm run build`                   | Production build                                              |
+| `npm run lint`                    | ESLint                                                        |
+| `npm run format` / `format:check` | Prettier write / check                                        |
+| `npm run typecheck`               | Route type generation + `tsc --noEmit`                        |
+| `npm run test`                    | Unit tests (Vitest)                                           |
+| `npm run test:e2e`                | End-to-end tests (Playwright, builds and boots the app first) |
+
+## Database
+
+Prisma schema lives in [prisma/schema.prisma](./prisma/schema.prisma). Every schema change is a committed migration under `prisma/migrations` — never edit the database by hand.
+
+```bash
+npx prisma migrate dev --name <change>   # create + apply a migration locally
+npx prisma studio                         # browse data
+```
+
+## Admin PWA
+
+The `/admin` app is an installable PWA (manifest, icons, service worker) so it can be added to an iPhone Home Screen and opened standalone — a prerequisite for iOS web push in a later phase. On iOS: open `/admin/login` in Safari, tap Share → Add to Home Screen.
+
+## Workflow
+
+Trunk is `main`. Each phase of the blueprint is built on its own branch (`phase-0-foundation`, `phase-1-intake`, ...) and lands via a pull request with CI green — see the blueprint's section 12 for the full conventions.

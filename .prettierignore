@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+build
+coverage
+playwright-report
+test-results
+blob-report
+src/generated
+prisma/migrations
+package-lock.json
+.agents
+.windsurf
+skills-lock.json
+starlink-rental-blueprint.md

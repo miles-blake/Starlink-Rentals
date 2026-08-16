@@ -1,50 +1,62 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Next.js
-.next/
-out/
-build/
-dist/
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Production
-*.tsbuildinfo
-next-env.d.ts
+# testing
+/coverage
+/playwright-report
+/test-results
+/blob-report
 
-# Testing
-coverage/
-playwright-report/
-test-results/
-blob-report/
+# next.js
+/.next/
+/out/
 
-# Env files
-.env
-.env*.local
-.env.development
-.env.production
-!.env.example
+# production
+/build
 
-# Prisma
-prisma/*.db
-prisma/*.db-journal
-
-# Vercel
-.vercel
-
-# IDE / OS
+# misc
 .DS_Store
 *.pem
-.idea/
-.vscode/*
-!.vscode/extensions.json
 
-# Logs
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
+.pnpm-debug.log*
 
-# Misc
-*.local
+# env files (never commit secrets; .env.example is the documented template)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# prisma
+/prisma/*.db
+/prisma/*.db-journal
+
+# vendor-generated agent skill docs (from `prisma init`), not project source
+/.agents
+/.windsurf
+/.claude/skills
+skills-lock.json
+
+/src/generated/prisma
+.env*
+!.env.example
