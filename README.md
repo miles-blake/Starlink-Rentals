@@ -68,6 +68,17 @@ Between the Details and Confirmed steps of `/quote`, the renter reads and signs 
 
 Resend sandbox accounts can only deliver to the account's own signup address until a sending domain is verified in the Resend dashboard; real customer emails need that verification step first.
 
+## Admin portal
+
+`/admin` (behind the login) covers day-to-day operations:
+
+- **Dashboard** (`/admin`) — counts by status, rental revenue, deposits held/refunded, utilization over the next 30 days, upcoming drop-offs/returns, and holds expiring soon.
+- **Reservations** (`/admin/reservations`) — search/filter/sort, and a detail page per reservation with the full record, status history, and the legal next-step actions.
+- **Calendar** (`/admin/calendar`) — booked and blacked-out days at a glance; select a range to add a `BlackoutBlock`, which blocks new public bookings immediately (see [src/app/api/reservations/route.ts](./src/app/api/reservations/route.ts)).
+- **Settings** (`/admin/settings`) — rates, deposit, delivery fee model, service radius, min rental days, hold window, Venmo username, contact phone, and cancellation policy text. Base address and the rental agreement text aren't editable here — the former needs re-geocoding, the latter a versioning workflow.
+
+Every status change goes through [src/lib/reservation-state-machine.ts](./src/lib/reservation-state-machine.ts), the single source of truth for which transitions are legal for which actor (admin/customer/system). An illegal transition (e.g. skipping straight from `confirmed` to `active`) is rejected server-side and every legal one writes a `StatusEvent`, so the history on a reservation's detail page is always a complete, ordered audit trail — not just the current status.
+
 ## Admin PWA
 
 The `/admin` app is an installable PWA (manifest, icons, service worker) so it can be added to an iPhone Home Screen and opened standalone — a prerequisite for iOS web push in a later phase. On iOS: open `/admin/login` in Safari, tap Share → Add to Home Screen.
