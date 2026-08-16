@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Phase 5 — Payments (manual Venmo)
+
+- `PaymentProvider` interface + `ManualVenmoProvider` (`src/lib/payment-provider.ts`): builds a Venmo pay link/QR target and human-readable instructions from an amount and reference, with a documented seam for a future automated provider (e.g. Braintree).
+- Booking flow gains a Pay step between Sign and the final confirmation: Venmo QR code, "Open Venmo" deep link, and manual-copy fallback (recipient/amount/note), followed by an "I have paid" action (`POST /api/reservations/pay`) that moves the reservation from `awaiting_payment` to `payment_review` — payment isn't confirmed until an admin does so. The same Pay UI is reachable again from `/status` for a renter returning later.
+- Admin's confirm-payment action (built in Phase 4) now also emails a payment confirmation to the renter, best-effort.
+- Generalized the Phase 4 status-transition helper (`admin-reservation-transition.ts` → `reservation-transition.ts`) to take an explicit actor, so both the admin and customer payment flows share one transition/StatusEvent implementation instead of two.
+- Set `Setting.venmoUsername` to the operator's real Venmo handle.
+
 ## Phase 4 — Admin portal core
 
 - Reservation lifecycle state machine (`src/lib/reservation-state-machine.ts`): a single source-of-truth transition table for every status change (confirm payment, schedule drop-off, mark active, mark returned, refund deposit, cancel), shared by the admin actions and the existing hold-expiry cron. Illegal transitions are rejected; every legal one writes a `StatusEvent`.

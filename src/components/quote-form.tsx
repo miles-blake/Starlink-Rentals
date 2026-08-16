@@ -15,6 +15,7 @@ import {
 import { numberOfDaysBetween } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { AgreementSignForm } from "@/components/agreement-sign-form";
+import { PaymentHandoff } from "@/components/payment-handoff";
 
 interface AddressSuggestion {
   placeId: string;
@@ -101,9 +102,9 @@ export function QuoteForm() {
     "delivery" | "pickup"
   >("delivery");
 
-  const [step, setStep] = useState<"quote" | "details" | "sign" | "confirmed">(
-    "quote"
-  );
+  const [step, setStep] = useState<
+    "quote" | "details" | "sign" | "pay" | "confirmed"
+  >("quote");
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -269,7 +270,17 @@ export function QuoteForm() {
         publicId={reservation.data.publicId}
         customerEmail={customerEmail}
         customerName={customerName}
-        onSigned={() => setStep("confirmed")}
+        onSigned={() => setStep("pay")}
+      />
+    );
+  }
+
+  if (step === "pay" && reservation.status === "ready") {
+    return (
+      <PaymentHandoff
+        publicId={reservation.data.publicId}
+        customerEmail={customerEmail}
+        onPaid={() => setStep("confirmed")}
       />
     );
   }
@@ -280,23 +291,28 @@ export function QuoteForm() {
       <div className="border-border bg-card flex w-full max-w-md flex-col gap-4 rounded-lg border p-6">
         <div>
           <span className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
-            Reservation held
+            Payment received
           </span>
           <h2 className="text-foreground mt-1 font-mono text-2xl font-semibold">
             {reservation.data.publicId}
           </h2>
         </div>
         <p className="text-muted-foreground text-sm">
-          Your rental agreement is signed. Save this code — you&apos;ll use it
-          with your email to check status later. Your dates are held until{" "}
+          Your rental agreement is signed and we&apos;ve received your payment
+          confirmation. Save this code — you&apos;ll use it with your email to
+          check status later. We&apos;ll confirm your reservation shortly and
+          follow up to schedule{" "}
+          {reservation.data.fulfillmentMethod === "pickup"
+            ? "pickup"
+            : "delivery"}
+          . Your dates are held until{" "}
           <span className="text-foreground">
             {holdExpires.toLocaleString(undefined, {
               dateStyle: "medium",
               timeStyle: "short",
             })}
-          </span>
-          , pending payment setup, which isn&apos;t live yet — the operator will
-          follow up directly to arrange next steps.
+          </span>{" "}
+          in the meantime.
         </p>
         <div className="border-border flex flex-col gap-2 border-t pt-4 text-sm">
           <div className="flex items-center justify-between">

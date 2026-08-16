@@ -68,6 +68,14 @@ Between the Details and Confirmed steps of `/quote`, the renter reads and signs 
 
 Resend sandbox accounts can only deliver to the account's own signup address until a sending domain is verified in the Resend dashboard; real customer emails need that verification step first.
 
+## Payments
+
+Payment is manual Venmo, handed off after the agreement is signed: `/quote`'s Sign step leads into a Pay step showing a Venmo QR code and deep link (amount and a reference note prefilled), built by `ManualVenmoProvider` (`src/lib/payment-provider.ts`) from `Setting.venmoUsername`. The renter's "I have paid" button (`POST /api/reservations/pay`) transitions the reservation from `awaiting_payment` to `payment_review` — it does not itself confirm payment. The same Pay UI is reachable again later from `/status` (a "Pay now" button) for a renter who left and came back.
+
+An admin then confirms the payment from the reservation detail page (`/admin/reservations/[id]`), which records the amount, transitions to `confirmed`, and emails a confirmation to the renter (best-effort, like the Phase 3 signed-agreement email).
+
+`PaymentProvider` (same file) is a small interface so a future automated provider — e.g. Venmo via Braintree — could be swapped in without changing the API routes or UI, only `payment-provider.ts` itself.
+
 ## Admin portal
 
 `/admin` (behind the login) covers day-to-day operations:

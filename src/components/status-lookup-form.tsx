@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PaymentHandoff } from "@/components/payment-handoff";
 
 interface ReservationStatus {
   publicId: string;
@@ -57,6 +58,7 @@ export function StatusLookupForm() {
   const [publicId, setPublicId] = useState("");
   const [email, setEmail] = useState("");
   const [result, setResult] = useState<AsyncState>({ status: "idle" });
+  const [paying, setPaying] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,6 +84,23 @@ export function StatusLookupForm() {
         message: "Something went wrong. Try again.",
       });
     }
+  }
+
+  if (result.status === "ready" && paying) {
+    return (
+      <PaymentHandoff
+        publicId={result.data.publicId}
+        customerEmail={email}
+        onPaid={() => {
+          setPaying(false);
+          setResult((prev) =>
+            prev.status === "ready"
+              ? { ...prev, data: { ...prev.data, status: "payment_review" } }
+              : prev
+          );
+        }}
+      />
+    );
   }
 
   if (result.status === "ready") {
@@ -129,6 +148,11 @@ export function StatusLookupForm() {
             </div>
           ) : null}
         </div>
+        {r.status === "awaiting_payment" ? (
+          <Button type="button" size="sm" onClick={() => setPaying(true)}>
+            Pay now
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"
