@@ -26,3 +26,11 @@ test("quote page loads with the address and date inputs", async ({ page }) => {
     page.getByRole("button", { name: /select start and end dates/i })
   ).toBeVisible();
 });
+
+test("status page loads with the lookup form", async ({ page }) => {
+  await page.goto("/status");
+  await expect(page.getByPlaceholder(/sl-xxxx/i)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /check status/i })
+  ).toBeVisible();
+});
