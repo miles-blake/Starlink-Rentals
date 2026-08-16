@@ -12,11 +12,14 @@ Next.js (App Router) + TypeScript, Tailwind + shadcn/ui, Prisma + PostgreSQL, Au
 
 ```bash
 npm install
-cp .env.example .env   # fill in DATABASE_URL, NEXTAUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD
+cp .env.example .env   # fill in DATABASE_URL, NEXTAUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD,
+                        # GOOGLE_MAPS_SERVER_KEY, BASE_ADDRESS
 npx prisma migrate dev
-npx prisma db seed     # creates the first admin user from ADMIN_EMAIL / ADMIN_PASSWORD
+npx prisma db seed     # creates the first admin user, and (once) the Setting row
 npm run dev
 ```
+
+`GOOGLE_MAPS_SERVER_KEY` needs the **Places API (New)** and **Routes API** enabled in Google Cloud Console — it's used server-side only (geocoding, driving distance, address autocomplete proxy), never sent to the browser.
 
 Open [http://localhost:3000](http://localhost:3000) for the public site, or [http://localhost:3000/admin](http://localhost:3000/admin) for the admin login.
 
