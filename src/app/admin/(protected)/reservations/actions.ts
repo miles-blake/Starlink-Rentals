@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   ReservationNotFoundError,
-  applyAdminTransition,
-} from "@/lib/admin-reservation-transition";
+  applyReservationTransition,
+} from "@/lib/reservation-transition";
 import { prisma } from "@/lib/prisma";
 import { IllegalTransitionError } from "@/lib/reservation-state-machine";
 import { requireAdminSession } from "@/lib/require-admin-session";
+import { sendEmail } from "@/lib/email";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -66,7 +67,8 @@ export async function confirmPayment(
   return run(reservationId, async () => {
     const reservation = await getReservationOrThrow(reservationId);
     const paidInFull = parsed.data.amountPaid >= Number(reservation.totalDue);
-    return applyAdminTransition({
+    const updated = await applyReservationTransition({
+      actor: "admin",
       reservationId,
       toStatus: "confirmed",
       note: parsed.data.venmoReference
@@ -79,6 +81,19 @@ export async function confirmPayment(
         paymentStatus: paidInFull ? "paid_in_full" : "deposit_paid",
       },
     });
+
+    // Best-effort — the payment is already durably confirmed either way.
+    try {
+      await sendEmail({
+        to: reservation.customerEmail,
+        subject: `Payment confirmed — ${reservation.publicId}`,
+        text: `Hi ${reservation.customerName},\n\nWe've confirmed your payment of $${parsed.data.amountPaid.toFixed(2)} for reservation ${reservation.publicId}. Your rental is now confirmed for ${reservation.startDate.toDateString()} to ${reservation.endDate.toDateString()}.\n\nWe'll be in touch to schedule drop-off. You can check your reservation status anytime at the status page using your code and email.\n\n— Starlink Rentals`,
+      });
+    } catch (error) {
+      console.error("Payment confirmation email failed", error);
+    }
+
+    return updated;
   });
 }
 
@@ -105,7 +120,8 @@ export async function scheduleDropoff(
   }
 
   return run(reservationId, () =>
-    applyAdminTransition({
+    applyReservationTransition({
+      actor: "admin",
       reservationId,
       toStatus: "scheduled",
       note: "Drop-off and return scheduled",
@@ -116,7 +132,8 @@ export async function scheduleDropoff(
 
 export async function markActive(reservationId: string): Promise<ActionResult> {
   return run(reservationId, () =>
-    applyAdminTransition({
+    applyReservationTransition({
+      actor: "admin",
       reservationId,
       toStatus: "active",
       note: "Unit handed to customer",
@@ -144,7 +161,8 @@ export async function markReturned(
   }
 
   return run(reservationId, () =>
-    applyAdminTransition({
+    applyReservationTransition({
+      actor: "admin",
       reservationId,
       toStatus: "returned",
       note: "Unit returned",
@@ -169,7 +187,8 @@ export async function refundDeposit(
   return run(reservationId, async () => {
     const reservation = await getReservationOrThrow(reservationId);
     const fullRefund = parsed.data.amount >= Number(reservation.depositAmount);
-    return applyAdminTransition({
+    return applyReservationTransition({
+      actor: "admin",
       reservationId,
       toStatus: "completed",
       note: `Deposit refund: $${parsed.data.amount.toFixed(2)}`,
@@ -196,7 +215,8 @@ export async function cancelReservation(
   }
 
   return run(reservationId, () =>
-    applyAdminTransition({
+    applyReservationTransition({
+      actor: "admin",
       reservationId,
       toStatus: "cancelled",
       note: parsed.data.note || "Cancelled by admin",
