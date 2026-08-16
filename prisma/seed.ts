@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { geocodeAddress } from "../src/lib/google-maps";
+import { AGREEMENT_TEXT, AGREEMENT_VERSION } from "../src/lib/agreement-text";
 
 async function seedAdmin(prisma: PrismaClient) {
   const email = process.env.ADMIN_EMAIL;
@@ -25,6 +26,33 @@ async function seedAdmin(prisma: PrismaClient) {
 }
 
 async function seedSettings(prisma: PrismaClient) {
+  const existing = await prisma.setting.findUnique({ where: { id: 1 } });
+
+  if (existing) {
+    // Syncs the agreement text/version from the source-controlled constant.
+    // A stopgap until Phase 4's admin settings editor can do this as a
+    // deliberate action — fine for now since no signatures exist yet to
+    // worry about invalidating.
+    if (
+      existing.agreementText !== AGREEMENT_TEXT ||
+      existing.agreementCurrentVersion !== AGREEMENT_VERSION
+    ) {
+      await prisma.setting.update({
+        where: { id: 1 },
+        data: {
+          agreementText: AGREEMENT_TEXT,
+          agreementCurrentVersion: AGREEMENT_VERSION,
+        },
+      });
+      console.log(
+        `Updated Setting.agreementText to version ${AGREEMENT_VERSION}`
+      );
+    } else {
+      console.log("Setting row already exists and agreement text is current.");
+    }
+    return;
+  }
+
   const baseAddressInput = process.env.BASE_ADDRESS;
   const apiKey = process.env.GOOGLE_MAPS_SERVER_KEY;
 
@@ -32,12 +60,6 @@ async function seedSettings(prisma: PrismaClient) {
     console.log(
       "Skipping Setting seed: BASE_ADDRESS and GOOGLE_MAPS_SERVER_KEY must both be set."
     );
-    return;
-  }
-
-  const existing = await prisma.setting.findUnique({ where: { id: 1 } });
-  if (existing) {
-    console.log("Setting row already exists, leaving it as is.");
     return;
   }
 
@@ -60,6 +82,8 @@ async function seedSettings(prisma: PrismaClient) {
       deliveryFeeFlat: 15,
       minRentalDays: 1,
       holdWindowHours: 12,
+      agreementCurrentVersion: AGREEMENT_VERSION,
+      agreementText: AGREEMENT_TEXT,
       cancellationPolicyText:
         "Full refund if cancelled 48 hours or more before the rental start date. The refundable deposit is returned on any cancellation, since it is collateral against the unit rather than payment for the rental.",
       notificationChannels: { push: true, email: true, sms: false },
