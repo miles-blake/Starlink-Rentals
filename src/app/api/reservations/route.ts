@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { findConflicts } from "@/lib/availability";
 import { evaluateEligibility } from "@/lib/eligibility";
+import { BLOCKING_STATUSES } from "@/lib/reservation-state-machine";
 import {
   MinRentalDaysError,
   assertMinRentalDays,
@@ -155,13 +156,7 @@ export async function POST(request: Request) {
             OR: [
               {
                 status: {
-                  in: [
-                    "payment_review",
-                    "confirmed",
-                    "scheduled",
-                    "active",
-                    "returned",
-                  ],
+                  in: BLOCKING_STATUSES.filter((s) => s !== "awaiting_payment"),
                 },
               },
               {
