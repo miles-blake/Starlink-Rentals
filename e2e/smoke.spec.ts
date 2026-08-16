@@ -16,3 +16,13 @@ test("unauthenticated visitors are redirected to admin login", async ({
     page.getByRole("heading", { name: /admin sign in/i })
   ).toBeVisible();
 });
+
+test("quote page loads with the address and date inputs", async ({ page }) => {
+  await page.goto("/quote");
+  await expect(
+    page.getByPlaceholder(/start typing your address/i)
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /select start and end dates/i })
+  ).toBeVisible();
+});

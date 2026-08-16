@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Phase 1 — Eligibility and quote engine
+
+- Pricing engine (`src/lib/pricing.ts`): $30 for day 1, +$20 per additional day, deposit, delivery fee, and total, all pure functions with full unit test coverage. Enforces `minRentalDays`.
+- Eligibility engine (`src/lib/eligibility.ts`, `src/lib/google-maps.ts`): driving distance via the Routes API, geocoding via Places API (New), evaluated against `Setting.serviceRadiusMiles`.
+- Address autocomplete is proxied through our own `/api/places/autocomplete` route rather than Google's client-side widget — the browser never receives a Google Maps key at all, so there's no second referrer-restricted key to manage.
+- `/api/eligibility` and `/api/pricing`: rate-limited, Zod-validated, return only the client-safe fields (never raw Google API responses). Eligibility results are cached by `placeId` for a day.
+- Public quote page at `/quote`: address autocomplete, date range picker, live itemized quote (or a clear not-eligible message), delivery/pickup toggle.
+- `Setting` seeded with the real base address, service radius, and rates; `agreementText`/`cancellationPolicyText` are nullable until Phase 3 supplies real legal copy.
+
 ## Phase 0 — Foundation
 
 - Next.js (App Router) + TypeScript + Tailwind + shadcn/ui scaffold, styled with a Starlink-inspired dark palette and Geist typography.
