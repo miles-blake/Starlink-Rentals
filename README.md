@@ -21,7 +21,7 @@ npm run dev
 
 `GOOGLE_MAPS_SERVER_KEY` needs the **Places API (New)** and **Routes API** enabled in Google Cloud Console — it's used server-side only (geocoding, driving distance, address autocomplete proxy), never sent to the browser.
 
-Open [http://localhost:3000](http://localhost:3000) for the public site, or [http://localhost:3000/admin](http://localhost:3000/admin) for the admin login.
+Open [http://localhost:3000](http://localhost:3000) for the public site (`/quote` to book, `/status` to check a reservation), or [http://localhost:3000/admin](http://localhost:3000/admin) for the admin login.
 
 ## Scripts
 
@@ -43,6 +43,15 @@ Prisma schema lives in [prisma/schema.prisma](./prisma/schema.prisma). Every sch
 npx prisma migrate dev --name <change>   # create + apply a migration locally
 npx prisma studio                         # browse data
 ```
+
+## Availability
+
+Two layers keep the single physical kit from ever being double-booked (see [prisma/lib/availability.ts](./src/lib/availability.ts) and the exclusion-constraint migration):
+
+- **Soft holds** (`awaiting_payment`): checked in application code against `holdExpiresAt`, so an expired-but-not-yet-cleaned-up hold never blocks new bookings in real time.
+- **Hard bookings** (`payment_review` and beyond): enforced at the database level with a Postgres exclusion constraint (`btree_gist`) — two such reservations can never overlap, race conditions included.
+
+`/api/cron/expire-holds` (wired up in [vercel.json](./vercel.json), daily by default — bump the schedule if you're on Vercel Pro) formally cancels expired holds for admin-facing accuracy, but correctness doesn't depend on how often it runs.
 
 ## Admin PWA
 

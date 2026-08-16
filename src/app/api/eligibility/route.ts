@@ -2,30 +2,16 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { evaluateEligibility } from "@/lib/eligibility";
 import { computeDeliveryFee } from "@/lib/pricing";
-import {
-  fetchDrivingDistanceMiles,
-  fetchPlaceDetails,
-} from "@/lib/google-maps";
+import { resolvePlaceAndDistance } from "@/lib/place-lookup";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
-import { TtlCache } from "@/lib/ttl-cache";
 
 const bodySchema = z.object({
   placeId: z.string().trim().min(1).max(300),
 });
 
 const API_KEY = process.env.GOOGLE_MAPS_SERVER_KEY;
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-// Cached by placeId for a day, per the blueprint's cost-control guidance —
-// the base point never changes, so placeId alone is a safe cache key.
-const distanceCache = new TtlCache<{
-  distanceMiles: number;
-  formattedAddress: string;
-  lat: number;
-  lng: number;
-}>(ONE_DAY_MS);
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
@@ -54,17 +40,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { distanceMiles } = await distanceCache.getOrSet(
+    const { distanceMiles } = await resolvePlaceAndDistance(
       parsed.data.placeId,
-      async () => {
-        const place = await fetchPlaceDetails(parsed.data.placeId, API_KEY);
-        const distanceMiles = await fetchDrivingDistanceMiles(
-          { lat: settings.baseLat, lng: settings.baseLng },
-          { lat: place.lat, lng: place.lng },
-          API_KEY
-        );
-        return { distanceMiles, ...place };
-      }
+      API_KEY,
+      { lat: settings.baseLat, lng: settings.baseLng }
     );
 
     const { withinRadius } = evaluateEligibility({
