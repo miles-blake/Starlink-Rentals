@@ -19,17 +19,6 @@ export default function QuotePage() {
       </header>
 
       <main className="flex flex-1 flex-col items-center px-6 py-10">
-        <div className="mb-8 max-w-md text-center">
-          <span className="text-muted-foreground mb-3 inline-block font-mono text-xs tracking-wide uppercase">
-            Step 1 of 5 — Quote
-          </span>
-          <h1 className="text-foreground text-2xl font-semibold">
-            Check eligibility and pricing
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Enter your address and dates for an instant, itemized quote.
-          </p>
-        </div>
         <QuoteForm />
       </main>
     </div>

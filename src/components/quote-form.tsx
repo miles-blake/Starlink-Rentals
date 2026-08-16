@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { numberOfDaysBetween } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
+import { AgreementSignForm } from "@/components/agreement-sign-form";
 
 interface AddressSuggestion {
   placeId: string;
@@ -100,7 +101,9 @@ export function QuoteForm() {
     "delivery" | "pickup"
   >("delivery");
 
-  const [step, setStep] = useState<"quote" | "details" | "confirmed">("quote");
+  const [step, setStep] = useState<"quote" | "details" | "sign" | "confirmed">(
+    "quote"
+  );
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -234,7 +237,7 @@ export function QuoteForm() {
         return;
       }
       setReservation({ status: "ready", data });
-      setStep("confirmed");
+      setStep("sign");
     } catch {
       setReservation({
         status: "error",
@@ -260,6 +263,17 @@ export function QuoteForm() {
     numberOfDays !== null &&
     numberOfDays >= 1;
 
+  if (step === "sign" && reservation.status === "ready") {
+    return (
+      <AgreementSignForm
+        publicId={reservation.data.publicId}
+        customerEmail={customerEmail}
+        customerName={customerName}
+        onSigned={() => setStep("confirmed")}
+      />
+    );
+  }
+
   if (step === "confirmed" && reservation.status === "ready") {
     const holdExpires = new Date(reservation.data.holdExpiresAt);
     return (
@@ -273,8 +287,8 @@ export function QuoteForm() {
           </h2>
         </div>
         <p className="text-muted-foreground text-sm">
-          Save this code — you&apos;ll use it with your email to check status
-          later. Your dates are held until{" "}
+          Your rental agreement is signed. Save this code — you&apos;ll use it
+          with your email to check status later. Your dates are held until{" "}
           <span className="text-foreground">
             {holdExpires.toLocaleString(undefined, {
               dateStyle: "medium",
@@ -324,6 +338,14 @@ export function QuoteForm() {
   if (step === "details") {
     return (
       <div className="flex w-full max-w-md flex-col gap-4">
+        <div>
+          <span className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+            Step 2 of 5 — Details
+          </span>
+          <h1 className="text-foreground mt-1 text-2xl font-semibold">
+            Your contact info
+          </h1>
+        </div>
         <button
           type="button"
           onClick={() => setStep("quote")}
@@ -418,6 +440,18 @@ export function QuoteForm() {
 
   return (
     <div className="flex w-full max-w-md flex-col gap-6">
+      <div className="text-center">
+        <span className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+          Step 1 of 5 — Quote
+        </span>
+        <h1 className="text-foreground mt-1 text-2xl font-semibold">
+          Check eligibility and pricing
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Enter your address and dates for an instant, itemized quote.
+        </p>
+      </div>
+
       <div className="flex flex-col gap-2">
         <label className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
           Delivery or pickup address
