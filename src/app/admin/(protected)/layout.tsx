@@ -1,5 +1,6 @@
 import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
+import { AdminNav } from "./admin-nav";
 
 export default async function AdminShellLayout({
   children,
@@ -13,10 +14,13 @@ export default async function AdminShellLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="border-border flex items-center justify-between border-b px-6 py-4 sm:px-10">
-        <span className="text-foreground font-mono text-sm font-medium tracking-tight">
-          Starlink Rentals · Admin
-        </span>
+      <header className="border-border flex flex-wrap items-center justify-between gap-4 border-b px-6 py-4 sm:px-10">
+        <div className="flex items-center gap-6">
+          <span className="text-foreground font-mono text-sm font-medium tracking-tight">
+            Starlink Rentals · Admin
+          </span>
+          <AdminNav />
+        </div>
         <div className="flex items-center gap-4">
           <span className="text-muted-foreground hidden text-sm sm:inline">
             {session?.user?.email}

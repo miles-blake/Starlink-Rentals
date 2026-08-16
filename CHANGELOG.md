@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Phase 4 — Admin portal core
+
+- Reservation lifecycle state machine (`src/lib/reservation-state-machine.ts`): a single source-of-truth transition table for every status change (confirm payment, schedule drop-off, mark active, mark returned, refund deposit, cancel), shared by the admin actions and the existing hold-expiry cron. Illegal transitions are rejected; every legal one writes a `StatusEvent`.
+- Admin reservations list (`/admin/reservations`): search by name/email/code, filter by status, sort by date. Detail page (`/admin/reservations/[id]`) shows the full record, status history, and only the actions legal for the current status.
+- Availability calendar (`/admin/calendar`): two-month view of booked and blacked-out days; select a range to create a `BlackoutBlock`, which blocks new public bookings immediately since the reservation-creation endpoint already queries it on every request.
+- Settings editor (`/admin/settings`): rates, deposit, delivery fee model, service radius, min rental days, hold window, Venmo username, contact phone, cancellation policy text.
+- Dashboard (`/admin`): counts by status, rental revenue, deposits held/refunded, utilization over a rolling 30-day window, upcoming drop-offs/returns, and holds expiring within 24 hours.
+- All admin mutations are Next.js Server Actions, each independently re-checking the session server-side (defense in depth beyond the proxy/middleware gate) and validating the transition through the shared state machine before writing.
+
 ## Phase 3 — Rental agreement e-sign
 
 - Rental agreement text (`src/lib/agreement-text.ts`) versioned and stored in `Setting.agreementText`/`agreementCurrentVersion`; the seed script keeps the database copy in sync with the source-controlled constant.
