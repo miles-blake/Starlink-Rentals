@@ -11,6 +11,11 @@ export interface LatLng {
 
 export interface PlaceDetails extends LatLng {
   formattedAddress: string;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
 }
 
 export interface AddressSuggestion {
@@ -18,11 +23,43 @@ export interface AddressSuggestion {
   text: string;
 }
 
+interface AddressComponent {
+  longText?: string;
+  shortText?: string;
+  types?: string[];
+}
+
+function extractAddressParts(
+  components: AddressComponent[] | undefined
+): Pick<
+  PlaceDetails,
+  "addressLine1" | "addressLine2" | "city" | "state" | "zip"
+> {
+  const byType = (type: string) =>
+    components?.find((c) => c.types?.includes(type));
+
+  const streetNumber = byType("street_number")?.longText;
+  const route = byType("route")?.longText;
+  const addressLine1 =
+    streetNumber && route
+      ? `${streetNumber} ${route}`
+      : (route ?? streetNumber ?? null);
+
+  return {
+    addressLine1,
+    addressLine2: byType("subpremise")?.longText ?? null,
+    city: byType("locality")?.longText ?? null,
+    state: byType("administrative_area_level_1")?.shortText ?? null,
+    zip: byType("postal_code")?.longText ?? null,
+  };
+}
+
 /** Parses a Places API (New) Place Details response. Pure — no network. */
 export function parsePlaceDetailsResponse(json: unknown): PlaceDetails {
   const data = json as {
     location?: { latitude?: number; longitude?: number };
     formattedAddress?: string;
+    addressComponents?: AddressComponent[];
   };
   if (
     typeof data.location?.latitude !== "number" ||
@@ -35,10 +72,19 @@ export function parsePlaceDetailsResponse(json: unknown): PlaceDetails {
     lat: data.location.latitude,
     lng: data.location.longitude,
     formattedAddress: data.formattedAddress,
+    ...extractAddressParts(data.addressComponents),
   };
 }
 
-/** Parses a Routes API computeRouteMatrix response, returns driving distance in meters. Pure — no network. */
+/**
+ * Parses a Routes API computeRouteMatrix response, returns driving distance
+ * in meters. Pure — no network.
+ *
+ * When origin and destination are the same point (booking right at the base
+ * address), Google omits `distanceMeters` entirely rather than sending 0 —
+ * that's a valid zero-distance route, not a malformed response, and is
+ * distinguished from a real error by an empty `status` object.
+ */
 export function parseRouteMatrixResponse(json: unknown): number {
   const rows = json as Array<{
     status?: Record<string, unknown>;
@@ -46,10 +92,15 @@ export function parseRouteMatrixResponse(json: unknown): number {
     condition?: string;
   }>;
   const entry = Array.isArray(rows) ? rows[0] : undefined;
-  if (!entry || typeof entry.distanceMeters !== "number") {
+  if (!entry) {
     throw new Error("Unexpected Routes API response shape");
   }
-  return entry.distanceMeters;
+  if (entry.status && Object.keys(entry.status).length > 0) {
+    throw new Error(
+      `Routes API returned an error: ${JSON.stringify(entry.status)}`
+    );
+  }
+  return typeof entry.distanceMeters === "number" ? entry.distanceMeters : 0;
 }
 
 /** Parses a Places API (New) Autocomplete response. Pure — no network. */
@@ -97,7 +148,7 @@ export async function fetchPlaceDetails(
   apiKey: string
 ): Promise<PlaceDetails> {
   const res = await fetch(
-    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?fields=location,formattedAddress`,
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?fields=location,formattedAddress,addressComponents`,
     { headers: { "X-Goog-Api-Key": apiKey } }
   );
   if (!res.ok) {
