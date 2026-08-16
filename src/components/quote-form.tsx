@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,19 @@ interface PricingResponse {
   totalDue: number;
 }
 
+interface ReservationResponse {
+  publicId: string;
+  startDate: string;
+  endDate: string;
+  numberOfDays: number;
+  rentalSubtotal: number;
+  depositAmount: number;
+  deliveryFee: number;
+  totalDue: number;
+  fulfillmentMethod: "delivery" | "pickup";
+  holdExpiresAt: string;
+}
+
 type AsyncState<T> =
   | { status: "idle" }
   | { status: "loading" }
@@ -44,6 +58,27 @@ const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
+
+function formatDateOnly(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// The server stores/returns pure calendar dates as UTC midnight. Reading
+// them back with local getters (or toLocaleDateString) shifts the displayed
+// day backward in any timezone behind UTC — read the UTC components instead
+// so "Aug 20" sent stays "Aug 20" shown.
+function formatUtcDate(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 export function QuoteForm() {
   const [addressInput, setAddressInput] = useState("");
@@ -64,6 +99,15 @@ export function QuoteForm() {
   const [fulfillmentMethod, setFulfillmentMethod] = useState<
     "delivery" | "pickup"
   >("delivery");
+
+  const [step, setStep] = useState<"quote" | "details" | "confirmed">("quote");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [reservation, setReservation] = useState<
+    AsyncState<ReservationResponse>
+  >({ status: "idle" });
 
   const numberOfDays = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) return null;
@@ -119,6 +163,7 @@ export function QuoteForm() {
         return;
       }
       setEligibility({ status: "ready", data });
+      if (!data.withinRadius) setFulfillmentMethod("pickup");
     } catch {
       setEligibility({
         status: "error",
@@ -162,22 +207,214 @@ export function QuoteForm() {
     return () => controller.abort();
   }, [numberOfDays]);
 
-  const deliveryFee =
-    fulfillmentMethod === "pickup"
-      ? 0
-      : eligibility.status === "ready"
-        ? eligibility.data.deliveryFee
-        : 0;
+  async function submitReservation() {
+    if (!selectedAddress || !dateRange?.from || !dateRange?.to) return;
+    setReservation({ status: "loading" });
+    try {
+      const res = await fetch("/api/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          placeId: selectedAddress.placeId,
+          addressLine2: addressLine2.trim() || undefined,
+          startDate: formatDateOnly(dateRange.from),
+          endDate: formatDateOnly(dateRange.to),
+          fulfillmentMethod,
+          customerName,
+          customerEmail,
+          customerPhone,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReservation({
+          status: "error",
+          message: data.error ?? "Could not create the reservation.",
+        });
+        return;
+      }
+      setReservation({ status: "ready", data });
+      setStep("confirmed");
+    } catch {
+      setReservation({
+        status: "error",
+        message: "Could not create the reservation. Try again.",
+      });
+    }
+  }
 
-  const showNotEligible =
-    eligibility.status === "ready" && !eligibility.data.withinRadius;
+  // Pickup has no distance limit — the 40-mile radius only ever gates
+  // delivery. An address outside it still gets a full quote, just without
+  // the delivery option.
+  const deliveryAvailable =
+    eligibility.status === "ready" && eligibility.data.withinRadius;
+
+  const deliveryFee =
+    fulfillmentMethod === "pickup" || !deliveryAvailable
+      ? 0
+      : eligibility.data.deliveryFee;
 
   const showQuote =
     eligibility.status === "ready" &&
-    eligibility.data.withinRadius &&
     pricing.status === "ready" &&
     numberOfDays !== null &&
     numberOfDays >= 1;
+
+  if (step === "confirmed" && reservation.status === "ready") {
+    const holdExpires = new Date(reservation.data.holdExpiresAt);
+    return (
+      <div className="border-border bg-card flex w-full max-w-md flex-col gap-4 rounded-lg border p-6">
+        <div>
+          <span className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+            Reservation held
+          </span>
+          <h2 className="text-foreground mt-1 font-mono text-2xl font-semibold">
+            {reservation.data.publicId}
+          </h2>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Save this code — you&apos;ll use it with your email to check status
+          later. Your dates are held until{" "}
+          <span className="text-foreground">
+            {holdExpires.toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+          </span>
+          , pending payment setup, which isn&apos;t live yet — the operator will
+          follow up directly to arrange next steps.
+        </p>
+        <div className="border-border flex flex-col gap-2 border-t pt-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Dates</span>
+            <span>
+              {formatUtcDate(reservation.data.startDate)} –{" "}
+              {formatUtcDate(reservation.data.endDate)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">
+              {reservation.data.fulfillmentMethod === "pickup"
+                ? "Pickup"
+                : "Delivery"}
+            </span>
+            <span className="tabular-nums">
+              {reservation.data.deliveryFee === 0
+                ? "Free"
+                : currency.format(reservation.data.deliveryFee)}
+            </span>
+          </div>
+          <div className="border-border mt-1 flex items-center justify-between border-t pt-3 text-base font-semibold">
+            <span>Total due</span>
+            <span className="tabular-nums">
+              {currency.format(reservation.data.totalDue)}
+            </span>
+          </div>
+        </div>
+        <Link
+          href="/status"
+          className="text-muted-foreground hover:text-foreground text-center text-xs"
+        >
+          Check status later at /status
+        </Link>
+      </div>
+    );
+  }
+
+  if (step === "details") {
+    return (
+      <div className="flex w-full max-w-md flex-col gap-4">
+        <button
+          type="button"
+          onClick={() => setStep("quote")}
+          className="text-muted-foreground hover:text-foreground w-fit text-xs"
+        >
+          ← Back to quote
+        </button>
+        <div className="border-border bg-card rounded-lg border p-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">
+              {dateRange?.from && dateRange?.to
+                ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}`
+                : ""}
+            </span>
+            <span className="font-semibold tabular-nums">
+              {pricing.status === "ready"
+                ? currency.format(
+                    pricing.data.rentalSubtotal +
+                      pricing.data.depositAmount +
+                      deliveryFee
+                  )
+                : ""}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+            Full name
+          </label>
+          <Input
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            autoComplete="name"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+            Email
+          </label>
+          <Input
+            type="email"
+            value={customerEmail}
+            onChange={(e) => setCustomerEmail(e.target.value)}
+            autoComplete="email"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+            Phone
+          </label>
+          <Input
+            type="tel"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            autoComplete="tel"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+            Apt / unit (optional)
+          </label>
+          <Input
+            value={addressLine2}
+            onChange={(e) => setAddressLine2(e.target.value)}
+            autoComplete="address-line2"
+          />
+        </div>
+
+        {reservation.status === "error" ? (
+          <p className="text-destructive text-sm">{reservation.message}</p>
+        ) : null}
+
+        <Button
+          type="button"
+          size="lg"
+          disabled={
+            reservation.status === "loading" ||
+            !customerName.trim() ||
+            !customerEmail.trim() ||
+            !customerPhone.trim()
+          }
+          onClick={submitReservation}
+        >
+          {reservation.status === "loading"
+            ? "Holding your dates…"
+            : "Hold these dates"}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full max-w-md flex-col gap-6">
@@ -279,7 +516,7 @@ export function QuoteForm() {
         ) : null}
       </div>
 
-      {eligibility.status === "ready" && eligibility.data.withinRadius ? (
+      {eligibility.status === "ready" ? (
         <div className="flex flex-col gap-2">
           <label className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
             Fulfillment
@@ -289,6 +526,7 @@ export function QuoteForm() {
               type="button"
               variant={fulfillmentMethod === "delivery" ? "default" : "outline"}
               size="sm"
+              disabled={!deliveryAvailable}
               onClick={() => setFulfillmentMethod("delivery")}
               className={cn("flex-1")}
             >
@@ -304,15 +542,12 @@ export function QuoteForm() {
               Pickup (free)
             </Button>
           </div>
-        </div>
-      ) : null}
-
-      {showNotEligible ? (
-        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border p-4 text-sm">
-          Sorry —{" "}
-          {eligibility.status === "ready" ? eligibility.data.distanceMiles : ""}{" "}
-          miles is outside our 40-mile service area. We can&apos;t deliver or
-          arrange pickup for this address right now.
+          {!deliveryAvailable ? (
+            <p className="text-muted-foreground text-xs">
+              {eligibility.data.distanceMiles} miles is outside our 40-mile
+              delivery area, but pickup at our location is always available.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -351,9 +586,14 @@ export function QuoteForm() {
               )}
             </span>
           </div>
-          <p className="text-muted-foreground font-mono text-xs">
-            Reservations open in a future phase of the build.
-          </p>
+          <Button
+            type="button"
+            size="lg"
+            className="mt-1"
+            onClick={() => setStep("details")}
+          >
+            Continue
+          </Button>
         </div>
       ) : null}
     </div>
