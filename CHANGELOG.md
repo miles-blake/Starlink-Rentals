@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Phase 3 — Rental agreement e-sign
+
+- Rental agreement text (`src/lib/agreement-text.ts`) versioned and stored in `Setting.agreementText`/`agreementCurrentVersion`; the seed script keeps the database copy in sync with the source-controlled constant.
+- `/api/reservations/sign`: server-side e-sign flow — verifies the reservation by public code + email, SHA-256 hashes the exact agreement text shown (so a signed record stays tied to its wording even if the agreement changes later), renders a signed PDF, uploads it to Vercel Blob (private), and stores signer name/timestamp/version/hash/IP/user agent immutably on the reservation. Idempotent: re-signing an already-signed reservation returns the existing record rather than overwriting it.
+- Signed PDF is emailed to the renter via Resend as a best-effort step — delivery failure is logged but doesn't fail the signing request, since the signature and PDF are already durably stored.
+- New Sign step in the `/quote` flow, between Details and Confirmed: scroll-gated agreement text, an active (unchecked-by-default) agreement checkbox, and a typed-name signature field, following ESIGN Act / UETA-style e-signature capture conventions.
+- Known limitation: Resend's sandbox mode can only send to the account's own signup address until a sending domain is verified — real customer emails are blocked until that verification is done.
+
 ## Phase 2 — Availability and reservations
 
 - Availability engine (`src/lib/availability.ts`): half-open date-range overlap checking, fully unit tested against adjacent, same-day, containment, and identical-range edge cases.

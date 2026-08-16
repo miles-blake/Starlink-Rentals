@@ -13,7 +13,8 @@ Next.js (App Router) + TypeScript, Tailwind + shadcn/ui, Prisma + PostgreSQL, Au
 ```bash
 npm install
 cp .env.example .env   # fill in DATABASE_URL, NEXTAUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD,
-                        # GOOGLE_MAPS_SERVER_KEY, BASE_ADDRESS
+                        # GOOGLE_MAPS_SERVER_KEY, BASE_ADDRESS, RESEND_API_KEY, FROM_EMAIL,
+                        # BLOB_READ_WRITE_TOKEN
 npx prisma migrate dev
 npx prisma db seed     # creates the first admin user, and (once) the Setting row
 npm run dev
@@ -52,6 +53,20 @@ Two layers keep the single physical kit from ever being double-booked (see [pris
 - **Hard bookings** (`payment_review` and beyond): enforced at the database level with a Postgres exclusion constraint (`btree_gist`) — two such reservations can never overlap, race conditions included.
 
 `/api/cron/expire-holds` (wired up in [vercel.json](./vercel.json), daily by default — bump the schedule if you're on Vercel Pro) formally cancels expired holds for admin-facing accuracy, but correctness doesn't depend on how often it runs.
+
+## Rental agreement e-sign
+
+Between the Details and Confirmed steps of `/quote`, the renter reads and signs the rental agreement stored in `Setting.agreementText` (source of truth: [src/lib/agreement-text.ts](./src/lib/agreement-text.ts)). The "Sign" button stays disabled until the renter has scrolled the agreement to the bottom, checked the active (unchecked-by-default) agreement box, and typed their full name.
+
+`POST /api/reservations/sign` ([src/app/api/reservations/sign/route.ts](./src/app/api/reservations/sign/route.ts)) then, server-side:
+
+1. Re-verifies the reservation by public code + email (same generic error for both a bad code and a mismatched email, so the endpoint can't be used to probe valid codes).
+2. Hashes the exact agreement text shown (SHA-256) so the signed record stays provably tied to the wording in effect at signing time, even if `agreementText` changes later.
+3. Renders a signed PDF ([src/lib/agreement-pdf.tsx](./src/lib/agreement-pdf.tsx)) and uploads it to Vercel Blob (`access: "private"`).
+4. Stores signer name, timestamp, agreement version, text hash, IP, user agent, and the PDF URL on the reservation — immutable once set; re-signing an already-signed reservation just returns the existing record instead of overwriting it.
+5. Emails the signed PDF via Resend, best-effort — a delivery failure is logged but doesn't fail the request, since the signature and PDF are already durably stored.
+
+Resend sandbox accounts can only deliver to the account's own signup address until a sending domain is verified in the Resend dashboard; real customer emails need that verification step first.
 
 ## Admin PWA
 
