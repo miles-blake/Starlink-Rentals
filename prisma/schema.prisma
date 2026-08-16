@@ -1,0 +1,230 @@
+// Prisma schema for Starlink Rentals.
+// See starlink-rental-blueprint.md section 4 (data model) and section 5 (state machine).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ReservationStatus {
+  awaiting_payment
+  payment_review
+  confirmed
+  scheduled
+  active
+  returned
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  unpaid
+  deposit_paid
+  paid_in_full
+  refunded
+  partially_refunded
+}
+
+enum FulfillmentMethod {
+  delivery
+  pickup
+}
+
+enum StatusEventActor {
+  system
+  admin
+  customer
+}
+
+enum NotificationChannel {
+  push
+  sms
+  email
+}
+
+enum ConditionPhotoPhase {
+  dropoff
+  return
+}
+
+enum DeliveryFeeModel {
+  flat
+  per_mile
+}
+
+model Reservation {
+  id       String            @id @default(cuid())
+  publicId String            @unique
+  status   ReservationStatus @default(awaiting_payment)
+
+  // Customer
+  customerName  String
+  customerEmail String
+  customerPhone String
+
+  // Address
+  addressLine1     String
+  addressLine2     String?
+  city             String
+  state            String
+  zip              String
+  lat              Float
+  lng              Float
+  formattedAddress String
+  googlePlaceId    String
+
+  // Eligibility
+  distanceMiles Float
+  withinRadius  Boolean
+
+  // Dates
+  startDate     DateTime
+  endDate       DateTime
+  holdExpiresAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Pricing snapshot (frozen at reservation time)
+  dailyRate      Decimal @db.Decimal(10, 2)
+  numberOfDays   Int
+  rentalSubtotal Decimal @db.Decimal(10, 2)
+  depositAmount  Decimal @db.Decimal(10, 2)
+  deliveryFee    Decimal @db.Decimal(10, 2)
+  totalDue       Decimal @db.Decimal(10, 2)
+
+  // Payment
+  paymentStatus       PaymentStatus @default(unpaid)
+  venmoReference      String?
+  amountPaid          Decimal       @default(0) @db.Decimal(10, 2)
+  paidConfirmedAt     DateTime?
+  depositRefundedAt   DateTime?
+  depositRefundAmount Decimal?      @db.Decimal(10, 2)
+
+  // Fulfillment
+  fulfillmentMethod  FulfillmentMethod?
+  dropoffScheduledAt DateTime?
+  returnScheduledAt  DateTime?
+  actualReturnAt     DateTime?
+
+  // Agreement
+  agreementSignedAt        DateTime?
+  agreementVersion         String?
+  agreementSignerName      String?
+  agreementSignerIp        String?
+  agreementSignerUserAgent String?
+  agreementTextHash        String?
+  signedPdfUrl             String?
+
+  // Admin
+  internalNotes String?
+
+  // Relations
+  contactLogs      ContactLog[]
+  conditionPhotos  ConditionPhoto[]
+  statusEvents     StatusEvent[]
+  notificationLogs NotificationLog[]
+
+  @@index([status])
+  @@index([startDate, endDate])
+  @@index([customerEmail])
+}
+
+model BlackoutBlock {
+  id        String   @id @default(cuid())
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([startDate, endDate])
+}
+
+model ContactLog {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  note          String
+  createdAt     DateTime    @default(now())
+
+  @@index([reservationId])
+}
+
+model NotificationLog {
+  id            String              @id @default(cuid())
+  reservationId String?
+  reservation   Reservation?        @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  eventType     String
+  channel       NotificationChannel
+  sentAt        DateTime            @default(now())
+  success       Boolean
+
+  @@index([reservationId, eventType])
+}
+
+model ConditionPhoto {
+  id            String              @id @default(cuid())
+  reservationId String
+  reservation   Reservation         @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  phase         ConditionPhotoPhase
+  url           String
+  caption       String?
+  createdAt     DateTime            @default(now())
+
+  @@index([reservationId, phase])
+}
+
+model StatusEvent {
+  id            String             @id @default(cuid())
+  reservationId String
+  reservation   Reservation        @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  fromStatus    ReservationStatus?
+  toStatus      ReservationStatus
+  actor         StatusEventActor
+  note          String?
+  createdAt     DateTime           @default(now())
+
+  @@index([reservationId])
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  otpSecret    String?
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
+
+model Setting {
+  id Int @id @default(1)
+
+  baseAddress        String
+  baseLat            Float
+  baseLng            Float
+  serviceRadiusMiles Float  @default(40)
+
+  dailyRate          Decimal          @db.Decimal(10, 2)
+  depositAmount      Decimal          @db.Decimal(10, 2)
+  deliveryFeeModel   DeliveryFeeModel @default(flat)
+  deliveryFeeFlat    Decimal?         @db.Decimal(10, 2)
+  deliveryFeePerMile Decimal?         @db.Decimal(10, 2)
+  minRentalDays      Int              @default(1)
+  holdWindowHours    Int              @default(24)
+
+  venmoUsername String?
+  contactPhone  String?
+
+  agreementCurrentVersion String @default("1")
+  agreementText           String
+  cancellationPolicyText  String
+
+  notificationChannels Json
+  notificationEvents   Json
+  quietHours           Json?
+
+  updatedAt DateTime @updatedAt
+}
