@@ -50,7 +50,8 @@ export function AdminLoginForm({ callbackUrl }: { callbackUrl: string }) {
         className="border-border bg-card flex flex-col gap-4 rounded-xl border p-6"
       >
         <p className="text-muted-foreground text-sm">
-          We sent a sign-in code to <span className="text-foreground">{email}</span>.
+          We sent a sign-in code to{" "}
+          <span className="text-foreground">{email}</span>.
         </p>
 
         <div className="flex flex-col gap-1.5">

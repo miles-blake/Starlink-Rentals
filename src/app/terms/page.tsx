@@ -36,9 +36,9 @@ export default async function TermsPage() {
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
               This page is a summary for website visitors. The full,
               legally-binding terms are the Rental Agreement you sign
-              electronically when you book, which covers the same ground in
-              more detail. This is a draft prepared for the operator&apos;s
-              own review and is not a substitute for advice from a lawyer.
+              electronically when you book, which covers the same ground in more
+              detail. This is a draft prepared for the operator&apos;s own
+              review and is not a substitute for advice from a lawyer.
             </p>
           </div>
 
@@ -48,11 +48,11 @@ export default async function TermsPage() {
             </h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Starlink Rentals is an independent equipment rental service
-              operated by Miles Holt Blake. We are not affiliated with,
-              endorsed by, or sponsored by Starlink or SpaceX. We make no
-              warranty regarding internet speed, latency, uptime, or
-              coverage, since those depend on Starlink&apos;s own network,
-              weather, and your location.
+              operated by Miles Holt Blake. We are not affiliated with, endorsed
+              by, or sponsored by Starlink or SpaceX. We make no warranty
+              regarding internet speed, latency, uptime, or coverage, since
+              those depend on Starlink&apos;s own network, weather, and your
+              location.
             </p>
           </section>
 
@@ -71,10 +71,10 @@ export default async function TermsPage() {
             </h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Your quote shows the rental fee, refundable deposit, and any
-              delivery fee, fixed at the time you book. Payment, including
-              the deposit, is due in full before drop-off or pickup. The
-              deposit is refunded on return of the equipment in good
-              condition, ordinary wear and tear excepted.
+              delivery fee, fixed at the time you book. Payment, including the
+              deposit, is due in full before drop-off or pickup. The deposit is
+              refunded on return of the equipment in good condition, ordinary
+              wear and tear excepted.
             </p>
           </section>
 
@@ -83,8 +83,8 @@ export default async function TermsPage() {
               Late returns
             </h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Equipment not returned by the scheduled return time is subject
-              to a late fee, calculated hourly, as described in your Rental
+              Equipment not returned by the scheduled return time is subject to
+              a late fee, calculated hourly, as described in your Rental
               Agreement.
             </p>
           </section>
@@ -98,8 +98,7 @@ export default async function TermsPage() {
               <Link href="/status" className="text-primary hover:underline">
                 status page
               </Link>{" "}
-              or in your confirmation email, and mention your reservation
-              code.
+              or in your confirmation email, and mention your reservation code.
             </p>
           </section>
         </div>
