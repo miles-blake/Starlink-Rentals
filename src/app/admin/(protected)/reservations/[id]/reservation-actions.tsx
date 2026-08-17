@@ -50,8 +50,9 @@ export function ReservationActions(props: {
     <div className="flex flex-col gap-6">
       {status === "awaiting_payment" && (
         <p className="text-muted-foreground text-sm">
-          Waiting for the customer to submit payment. There is no admin action
-          here yet — that comes online in Phase 5.
+          Waiting for the customer to sign and pay. Nothing to do here until
+          they mark it paid — this becomes actionable once the status moves to
+          &quot;Payment review&quot;.
         </p>
       )}
 
