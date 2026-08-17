@@ -8,6 +8,7 @@ import {
   ReservationNotFoundError,
   applyReservationTransition,
 } from "@/lib/reservation-transition";
+import { notify } from "@/lib/notifier";
 
 const bodySchema = z.object({
   publicId: z.string().trim().min(1).max(20),
@@ -59,6 +60,15 @@ export async function POST(request: Request) {
       actor: "customer",
       note: "Customer marked as paid",
     });
+
+    await notify({
+      eventType: "payment_review",
+      title: "Payment awaiting confirmation",
+      body: `${reservation.customerName} marked ${reservation.publicId} as paid — confirm it in the admin portal.`,
+      url: `/admin/reservations/${reservation.id}`,
+      reservationId: reservation.id,
+    });
+
     return NextResponse.json({ status: updated.status });
   } catch (error) {
     if (error instanceof ReservationNotFoundError) {
