@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MinRentalDaysError,
   assertMinRentalDays,
+  computeBatteryFee,
   computeDeliveryFee,
   computeQuote,
   computeRentalSubtotal,
@@ -105,6 +106,28 @@ describe("computeDeliveryFee", () => {
   });
 });
 
+describe("computeBatteryFee", () => {
+  it("is free when not rented", () => {
+    expect(
+      computeBatteryFee({
+        batteryRented: false,
+        batteryDailyRate: 10,
+        numberOfDays: 4,
+      })
+    ).toBe(0);
+  });
+
+  it("charges the daily rate times the number of days when rented", () => {
+    expect(
+      computeBatteryFee({
+        batteryRented: true,
+        batteryDailyRate: 10,
+        numberOfDays: 4,
+      })
+    ).toBe(40);
+  });
+});
+
 describe("computeQuote", () => {
   it("sums rental, deposit, and delivery into totalDue", () => {
     const quote = computeQuote({
@@ -115,7 +138,20 @@ describe("computeQuote", () => {
       deliveryFee: 15,
     });
     expect(quote.rentalSubtotal).toBe(90);
+    expect(quote.batteryFee).toBe(0);
     expect(quote.totalDue).toBe(90 + 300 + 15);
+  });
+
+  it("adds the battery fee into totalDue when given", () => {
+    const quote = computeQuote({
+      firstDayRate: 30,
+      dailyRate: 20,
+      numberOfDays: 4,
+      depositAmount: 300,
+      deliveryFee: 15,
+      batteryFee: 40,
+    });
+    expect(quote.totalDue).toBe(90 + 300 + 15 + 40);
   });
 });
 

@@ -57,6 +57,12 @@ Two layers keep the single physical kit from ever being double-booked (see [pris
 
 `/api/cron/expire-holds` (wired up in [vercel.json](./vercel.json), daily by default — bump the schedule if you're on Vercel Pro) formally cancels expired holds for admin-facing accuracy, but correctness doesn't depend on how often it runs.
 
+`POST /api/availability` ([src/app/api/availability/route.ts](./src/app/api/availability/route.ts)) is a read-only UX check the quote step calls once dates are picked, so a customer who selects an already-blocked range sees "Those dates are already reserved" and can't advance past the quote step. It's purely informational — the actual double-booking prevention above doesn't depend on it.
+
+## Add-ons
+
+Renters can add a Jackery 300 portable battery at `Setting.batteryDailyRate` per day (default $10, editable at `/admin/settings`) — the Starlink kit needs continuous power for the rental, and not every renter has outlet access the whole time. `computeBatteryFee` in [src/lib/pricing.ts](./src/lib/pricing.ts) folds it into the same quote/totalDue pipeline as the rental and delivery fees, and it's frozen on the reservation (`Reservation.batteryRented`/`batteryFee`) at booking time like everything else in the pricing snapshot.
+
 ## Rental agreement e-sign
 
 Between the Details and Confirmed steps of `/quote`, the renter reads and signs the rental agreement stored in `Setting.agreementText` (source of truth: [src/lib/agreement-text.ts](./src/lib/agreement-text.ts)). The "Sign" button stays disabled until the renter has scrolled the agreement to the bottom, checked the active (unchecked-by-default) agreement box, and typed their full name.

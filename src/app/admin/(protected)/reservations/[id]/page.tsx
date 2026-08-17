@@ -171,6 +171,12 @@ export default async function ReservationDetailPage({
                 label="Delivery fee"
                 value={formatCurrency(Number(reservation.deliveryFee))}
               />
+              {reservation.batteryRented && (
+                <Field
+                  label="Battery (Jackery 300)"
+                  value={formatCurrency(Number(reservation.batteryFee))}
+                />
+              )}
               <Field
                 label="Deposit"
                 value={formatCurrency(Number(reservation.depositAmount))}

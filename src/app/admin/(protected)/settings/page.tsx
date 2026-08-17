@@ -44,6 +44,7 @@ export default async function SettingsPage() {
           firstDayRate: Number(settings.firstDayRate),
           dailyRate: Number(settings.dailyRate),
           depositAmount: Number(settings.depositAmount),
+          batteryDailyRate: Number(settings.batteryDailyRate),
           deliveryFeeModel: settings.deliveryFeeModel,
           deliveryFeeFlat: settings.deliveryFeeFlat
             ? Number(settings.deliveryFeeFlat)

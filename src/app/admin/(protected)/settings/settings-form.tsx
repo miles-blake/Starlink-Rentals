@@ -10,6 +10,7 @@ export interface SettingsFormValues {
   firstDayRate: number;
   dailyRate: number;
   depositAmount: number;
+  batteryDailyRate: number;
   deliveryFeeModel: "flat" | "per_mile";
   deliveryFeeFlat: number | null;
   deliveryFeePerMile: number | null;
@@ -86,6 +87,14 @@ export function SettingsForm({ initial }: { initial: SettingsFormValues }) {
             step="0.01"
             value={values.depositAmount}
             onChange={(e) => set("depositAmount", Number(e.target.value))}
+          />
+        </Field>
+        <Field label="Battery daily rate ($)">
+          <Input
+            type="number"
+            step="0.01"
+            value={values.batteryDailyRate}
+            onChange={(e) => set("batteryDailyRate", Number(e.target.value))}
           />
         </Field>
         <Field label="Min rental days">

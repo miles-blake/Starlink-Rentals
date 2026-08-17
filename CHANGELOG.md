@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Post-launch fixes
+
+- **Battery rental add-on**: renters can add a Jackery 300 portable battery ($10/day, `Setting.batteryDailyRate`, editable at `/admin/settings`) at the quote step, since the Starlink kit needs continuous power and not every renter has outlet access the whole time. New `Reservation.batteryRented`/`batteryFee` fields, folded into the existing quote/totalDue pipeline (`computeBatteryFee` in `src/lib/pricing.ts`). Also added a power-source note to the FAQ, the rental agreement (bumped to version 2), and reservation-received/confirmation copy.
+- **Block booking already-reserved dates at the quote step**: previously a customer could pick blocked dates, fill in contact info, and only find out at the very last step ("Hold these dates") that they weren't available. New read-only `POST /api/availability` check (`src/app/api/availability/route.ts`) runs as soon as dates are picked and disables "Continue" with an inline error if they're taken — the real, race-safe enforcement still lives in `POST /api/reservations`'s transaction, unchanged.
+- **Stopped showing the owner's phone number as plain text** on the public confirmation/status screens (`TextOwnerLink`) — the "Text the owner" button and QR code still work the same way, the raw number just isn't rendered as visible text next to them anymore.
+
 ## Phase 7 — Hardening and launch
 
 - **Admin login now requires a second factor**: email + password, then a 6-digit code emailed to the admin (10-minute expiry, single-use). 5 failed password-or-code attempts locks the account for 15 minutes (`AdminUser.otpCodeHash`/`otpCodeExpiresAt`/`failedLoginAttempts`/`lockedUntil`, `src/lib/admin-login-security.ts`). The unused legacy `otpSecret` field (implies TOTP, not email OTP) was left untouched rather than repurposed.

@@ -48,6 +48,14 @@ export default function FaqPage() {
               required.
             </Question>
 
+            <Question q="Do I need a power outlet?">
+              Yes — the dish and router need to stay connected to a power source
+              the whole rental, so a standard wall outlet works fine. If you
+              won&apos;t have outlet access the whole time (camping, an off-grid
+              job site, an outdoor event), you can add a Jackery 300 portable
+              battery rental for $10/day at checkout.
+            </Question>
+
             <Question q="How do I set it up?">
               <ol className="list-decimal space-y-1 pl-5">
                 <li>

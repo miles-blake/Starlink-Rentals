@@ -53,7 +53,7 @@ export default async function AdminDashboardPage() {
       where: {
         status: { notIn: ["awaiting_payment", "payment_review", "cancelled"] },
       },
-      _sum: { rentalSubtotal: true, deliveryFee: true },
+      _sum: { rentalSubtotal: true, deliveryFee: true, batteryFee: true },
     }),
     prisma.reservation.aggregate({
       where: {
@@ -145,7 +145,8 @@ export default async function AdminDashboardPage() {
 
   const rentalRevenue =
     Number(revenueAgg._sum.rentalSubtotal ?? 0) +
-    Number(revenueAgg._sum.deliveryFee ?? 0);
+    Number(revenueAgg._sum.deliveryFee ?? 0) +
+    Number(revenueAgg._sum.batteryFee ?? 0);
   const depositsHeld = Number(depositsHeldAgg._sum.depositAmount ?? 0);
   const depositsRefunded = Number(
     depositsRefundedAgg._sum.depositRefundAmount ?? 0
@@ -189,8 +190,8 @@ export default async function AdminDashboardPage() {
               {formatCurrency(rentalRevenue)}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
-              Rental + delivery fees for confirmed-or-later, non-cancelled
-              reservations. Excludes deposits.
+              Rental + delivery + battery fees for confirmed-or-later,
+              non-cancelled reservations. Excludes deposits.
             </p>
           </CardContent>
         </Card>

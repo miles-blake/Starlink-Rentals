@@ -17,6 +17,8 @@ interface ReservationStatus {
   rentalSubtotal: number;
   depositAmount: number;
   deliveryFee: number;
+  batteryRented: boolean;
+  batteryFee: number;
   totalDue: number;
   paymentStatus: string;
   holdExpiresAt: string | null;
@@ -127,6 +129,16 @@ export function StatusLookupForm() {
             <span className="text-muted-foreground">Fulfillment</span>
             <span className="capitalize">{r.fulfillmentMethod}</span>
           </div>
+          {r.batteryRented ? (
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                Battery (Jackery 300)
+              </span>
+              <span className="tabular-nums">
+                {currency.format(r.batteryFee)}
+              </span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Total due</span>
             <span className="tabular-nums">{currency.format(r.totalDue)}</span>
