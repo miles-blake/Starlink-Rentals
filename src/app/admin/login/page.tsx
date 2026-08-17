@@ -1,29 +1,4 @@
-import { redirect } from "next/navigation";
-import { AuthError } from "next-auth";
-import { signIn } from "@/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-async function authenticate(formData: FormData) {
-  "use server";
-
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/admin";
-
-  try {
-    await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
-      redirectTo: callbackUrl,
-    });
-  } catch (error) {
-    if (error instanceof AuthError) {
-      const params = new URLSearchParams({ error: "CredentialsSignin" });
-      redirect(`/admin/login?${params.toString()}`);
-    }
-    throw error;
-  }
-}
+import { AdminLoginForm } from "./admin-login-form";
 
 export default async function AdminLoginPage({
   searchParams,
@@ -31,7 +6,6 @@ export default async function AdminLoginPage({
   const params = await searchParams;
   const callbackUrl =
     typeof params.callbackUrl === "string" ? params.callbackUrl : "/admin";
-  const hasError = typeof params.error === "string";
 
   return (
     <div className="flex min-h-full flex-1 items-center justify-center px-6 py-16">
@@ -48,47 +22,7 @@ export default async function AdminLoginPage({
           </p>
         </div>
 
-        <form
-          action={authenticate}
-          className="border-border bg-card flex flex-col gap-4 rounded-xl border p-6"
-        >
-          <input type="hidden" name="callbackUrl" value={callbackUrl} />
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-
-          {hasError ? (
-            <p
-              role="alert"
-              className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm"
-            >
-              Incorrect email or password.
-            </p>
-          ) : null}
-
-          <Button type="submit" className="mt-1">
-            Sign in
-          </Button>
-        </form>
+        <AdminLoginForm callbackUrl={callbackUrl} />
       </div>
     </div>
   );

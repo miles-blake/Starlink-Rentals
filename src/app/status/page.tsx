@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { StatusLookupForm } from "@/components/status-lookup-form";
+import { LegalFooter } from "@/components/legal-footer";
 
 export const metadata: Metadata = {
   title: "Check reservation status — Starlink Rentals",
@@ -29,6 +30,8 @@ export default function StatusPage() {
         </div>
         <StatusLookupForm />
       </main>
+
+      <LegalFooter />
     </div>
   );
 }

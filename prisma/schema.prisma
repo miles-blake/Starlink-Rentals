@@ -208,6 +208,15 @@ model AdminUser {
   otpSecret    String?
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
+
+  // Email OTP second factor (Phase 7). otpSecret above is unused legacy
+  // schema (implies TOTP semantics); this is a short-lived one-time code.
+  otpCodeHash      String?
+  otpCodeExpiresAt DateTime?
+
+  // Login lockout after repeated failures.
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
 }
 
 model Setting {

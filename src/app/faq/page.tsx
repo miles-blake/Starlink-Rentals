@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { LegalFooter } from "@/components/legal-footer";
 
 export const metadata: Metadata = {
   title: "Setup guide & FAQ — Starlink Rentals",
@@ -108,13 +109,10 @@ export default function FaqPage() {
               depending on availability for the following days.
             </Question>
           </div>
-
-          <p className="text-muted-foreground text-center text-xs">
-            Starlink Rentals is an independent rental service and is not
-            affiliated with, endorsed by, or sponsored by Starlink or SpaceX.
-          </p>
         </div>
       </main>
+
+      <LegalFooter />
     </div>
   );
 }

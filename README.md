@@ -105,6 +105,14 @@ Every status change goes through [src/lib/reservation-state-machine.ts](./src/li
 
 The `/admin` app is an installable PWA (manifest, icons, service worker) so it can be added to an iPhone Home Screen and opened standalone — required for iOS Web Push, which only works from a Home-Screen-installed app, never a plain Safari tab. On iOS: open `/admin/login` in Safari, tap Share → Add to Home Screen, open the app from its new icon, then enable notifications at `/admin/notifications`.
 
+## Security
+
+- **Admin login**: email + password, then a 6-digit code emailed to the admin's address (10-minute expiry, single use — [src/lib/admin-login-security.ts](./src/lib/admin-login-security.ts)). 5 failed password-or-code attempts locks the account for 15 minutes. The password never leaves the browser between steps — the client component holds it in memory and submits it together with the code on final sign-in ([src/app/admin/login](./src/app/admin/login)).
+- **Security headers** (CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS) are set for every route in [next.config.ts](./next.config.ts). The CSP allows `'unsafe-inline'` scripts because the App Router streams RSC payloads via inline `self.__next_f.push` tags — see the comment above `cspHeader` for the reasoning and the residual-risk tradeoff.
+- **CSRF**: every admin mutation is a Server Action, not a cookie-authenticated API route, so Next.js's built-in Origin-vs-Host check on Server Actions (enforced framework-side since 13.4) covers them — no extra CSRF middleware is needed. Public API routes under `/api/**` don't rely on cookies for auth, so they're not CSRF targets either.
+- **Rate limiting**: every public customer-facing `/api/**` route calls `checkRateLimit()` ([src/lib/rate-limit.ts](./src/lib/rate-limit.ts)), including the new OTP request/verify actions. The two cron routes are gated by `CRON_SECRET` instead.
+- **Legal pages**: [`/terms`](./src/app/terms/page.tsx) (including the live `Setting.cancellationPolicyText`) and [`/privacy`](./src/app/privacy/page.tsx) are linked from every public page's footer ([src/components/legal-footer.tsx](./src/components/legal-footer.tsx)). Both are operator-review drafts, not legal advice.
+
 ## Workflow
 
 Trunk is `main`. Each phase of the blueprint is built on its own branch (`phase-0-foundation`, `phase-1-intake`, ...) and lands via a pull request with CI green — see the blueprint's section 12 for the full conventions.
