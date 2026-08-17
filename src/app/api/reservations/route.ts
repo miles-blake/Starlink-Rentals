@@ -14,6 +14,8 @@ import { resolvePlaceAndDistance } from "@/lib/place-lookup";
 import { generateUniquePublicId } from "@/lib/public-id";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sendEmail } from "@/lib/email";
+import { textOwnerEmailBlurb } from "@/lib/sms-link";
 import { getClientIp } from "@/lib/request-ip";
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -231,6 +233,16 @@ export async function POST(request: Request) {
         },
       });
     });
+
+    try {
+      await sendEmail({
+        to: reservation.customerEmail,
+        subject: `Reservation received — ${reservation.publicId}`,
+        text: `Hi ${reservation.customerName},\n\nWe've received your reservation request for ${quote.numberOfDays} day${quote.numberOfDays === 1 ? "" : "s"} (${reservation.startDate.toDateString()} to ${reservation.endDate.toDateString()}). Your dates are held until ${reservation.holdExpiresAt!.toLocaleString()}.\n\nNext, sign the rental agreement and complete payment to confirm your reservation — you should already be on that page. Your code is ${reservation.publicId}; check status anytime at the status page using your code and email.${textOwnerEmailBlurb(settings.contactPhone, reservation.publicId)}\n\n— Starlink Rentals`,
+      });
+    } catch (error) {
+      console.error("Reservation-received email failed", error);
+    }
 
     return NextResponse.json(
       {

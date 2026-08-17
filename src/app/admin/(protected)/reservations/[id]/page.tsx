@@ -14,6 +14,8 @@ import {
   STATUS_LABELS,
 } from "@/lib/reservation-status-display";
 import { ReservationActions } from "./reservation-actions";
+import { ContactLogSection } from "./contact-log-section";
+import { ConditionPhotosSection } from "./condition-photos-section";
 
 export const metadata: Metadata = {
   title: "Reservation — Admin",
@@ -39,6 +41,8 @@ export default async function ReservationDetailPage({
     where: { id },
     include: {
       statusEvents: { orderBy: { createdAt: "asc" } },
+      contactLogs: { orderBy: { createdAt: "desc" } },
+      conditionPhotos: { orderBy: { createdAt: "asc" } },
     },
   });
 
@@ -77,6 +81,24 @@ export default async function ReservationDetailPage({
               <Field label="Name" value={reservation.customerName} />
               <Field label="Email" value={reservation.customerEmail} />
               <Field label="Phone" value={reservation.customerPhone} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ContactLogSection
+                reservationId={reservation.id}
+                customerPhone={reservation.customerPhone}
+                publicId={reservation.publicId}
+                initialLogs={reservation.contactLogs.map((log) => ({
+                  id: log.id,
+                  note: log.note,
+                  createdAt: log.createdAt.toISOString(),
+                }))}
+              />
             </CardContent>
           </Card>
 
@@ -219,6 +241,23 @@ export default async function ReservationDetailPage({
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Condition photos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConditionPhotosSection
+                reservationId={reservation.id}
+                photos={reservation.conditionPhotos.map((p) => ({
+                  id: p.id,
+                  phase: p.phase,
+                  url: p.url,
+                  createdAt: p.createdAt.toISOString(),
+                }))}
+              />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

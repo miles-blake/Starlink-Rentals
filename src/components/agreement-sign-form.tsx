@@ -131,6 +131,7 @@ export function AgreementSignForm(props: {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
+        data-testid="agreement-scroll-box"
         className="border-border bg-card h-72 overflow-y-auto rounded-lg border p-4 text-sm whitespace-pre-wrap"
       >
         {agreement.data.text}

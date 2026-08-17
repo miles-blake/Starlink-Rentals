@@ -16,6 +16,7 @@ import { numberOfDaysBetween } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { AgreementSignForm } from "@/components/agreement-sign-form";
 import { PaymentHandoff } from "@/components/payment-handoff";
+import { TextOwnerLink } from "@/components/text-owner-link";
 
 interface AddressSuggestion {
   placeId: string;
@@ -341,12 +342,22 @@ export function QuoteForm() {
             </span>
           </div>
         </div>
-        <Link
-          href="/status"
-          className="text-muted-foreground hover:text-foreground text-center text-xs"
-        >
-          Check status later at /status
-        </Link>
+        <TextOwnerLink publicId={reservation.data.publicId} />
+        <div className="flex items-center justify-center gap-3 text-xs">
+          <Link
+            href="/status"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Check status later at /status
+          </Link>
+          <span className="text-muted-foreground">·</span>
+          <Link
+            href="/faq"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Setup guide & FAQ
+          </Link>
+        </div>
       </div>
     );
   }

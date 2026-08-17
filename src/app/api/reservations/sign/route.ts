@@ -5,8 +5,10 @@ import { generateSignedAgreementPdf } from "@/lib/agreement-pdf";
 import { sendEmail } from "@/lib/email";
 import { sha256Hex } from "@/lib/hash";
 import { prisma } from "@/lib/prisma";
+import { textOwnerEmailBlurb } from "@/lib/sms-link";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
+import { notify } from "@/lib/notifier";
 
 const bodySchema = z.object({
   publicId: z.string().trim().min(1).max(20),
@@ -130,7 +132,7 @@ export async function POST(request: Request) {
     await sendEmail({
       to: reservation.customerEmail,
       subject: `Your signed Starlink Rentals agreement — ${reservation.publicId}`,
-      text: `Hi ${parsed.data.signerName},\n\nAttached is your signed copy of the Starlink Rentals rental agreement for reservation ${reservation.publicId}.\n\nThanks,\nStarlink Rentals`,
+      text: `Hi ${parsed.data.signerName},\n\nAttached is your signed copy of the Starlink Rentals rental agreement for reservation ${reservation.publicId}.\n\nThanks,\nStarlink Rentals${textOwnerEmailBlurb(settings.contactPhone, reservation.publicId)}`,
       attachments: [
         {
           filename: `starlink-rentals-agreement-${reservation.publicId}.pdf`,
@@ -139,10 +141,17 @@ export async function POST(request: Request) {
       ],
     });
   } catch (error) {
-    // Non-fatal: the signature and PDF are already durably stored. Log for
-    // now; Phase 6's NotificationLog will give this proper retry/visibility.
+    // Non-fatal: the signature and PDF are already durably stored.
     console.error("Signed agreement email failed to send", error);
   }
+
+  await notify({
+    eventType: "reservation_signed",
+    title: "Agreement signed",
+    body: `${parsed.data.signerName} signed the agreement for ${reservation.publicId} — awaiting payment.`,
+    url: `/admin/reservations/${reservation.id}`,
+    reservationId: reservation.id,
+  });
 
   return NextResponse.json({
     signerName: updated.agreementSignerName,

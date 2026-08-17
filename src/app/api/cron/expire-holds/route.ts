@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notify } from "@/lib/notifier";
 
 /**
  * Formally transitions expired soft holds to cancelled. This is bookkeeping,
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
       status: "awaiting_payment",
       holdExpiresAt: { lt: new Date() },
     },
-    select: { id: true },
+    select: { id: true, publicId: true },
   });
 
   if (expired.length === 0) {
@@ -47,6 +48,16 @@ export async function GET(request: Request) {
       })),
     }),
   ]);
+
+  for (const reservation of expired) {
+    await notify({
+      eventType: "hold_expired",
+      title: "Hold expired",
+      body: `${reservation.publicId}'s hold expired and its dates are free again.`,
+      url: `/admin/reservations/${reservation.id}`,
+      reservationId: reservation.id,
+    });
+  }
 
   return NextResponse.json({ expiredCount: ids.length });
 }
