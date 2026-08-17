@@ -97,6 +97,8 @@ model Reservation {
   rentalSubtotal Decimal @db.Decimal(10, 2)
   depositAmount  Decimal @db.Decimal(10, 2)
   deliveryFee    Decimal @db.Decimal(10, 2)
+  batteryRented  Boolean @default(false)
+  batteryFee     Decimal @default(0) @db.Decimal(10, 2)
   totalDue       Decimal @db.Decimal(10, 2)
 
   // Payment
@@ -237,6 +239,10 @@ model Setting {
   deliveryFeePerMile Decimal?         @db.Decimal(10, 2)
   minRentalDays      Int              @default(1)
   holdWindowHours    Int              @default(24)
+
+  // Optional add-on: a portable battery (Jackery 300), for customers who
+  // can't leave the dish plugged into wall power the whole rental.
+  batteryDailyRate Decimal @default(10) @db.Decimal(10, 2)
 
   venmoUsername String?
   contactPhone  String?

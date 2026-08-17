@@ -82,6 +82,16 @@ export function computeDeliveryFee(params: {
   return roundToCents((deliveryFeePerMile ?? 0) * distanceMiles);
 }
 
+export function computeBatteryFee(params: {
+  batteryRented: boolean;
+  batteryDailyRate: number;
+  numberOfDays: number;
+}): number {
+  const { batteryRented, batteryDailyRate, numberOfDays } = params;
+  if (!batteryRented) return 0;
+  return roundToCents(batteryDailyRate * numberOfDays);
+}
+
 export interface Quote {
   firstDayRate: number;
   dailyRate: number;
@@ -89,6 +99,7 @@ export interface Quote {
   rentalSubtotal: number;
   depositAmount: number;
   deliveryFee: number;
+  batteryFee: number;
   totalDue: number;
 }
 
@@ -98,15 +109,24 @@ export function computeQuote(params: {
   numberOfDays: number;
   depositAmount: number;
   deliveryFee: number;
+  batteryFee?: number;
 }): Quote {
-  const { firstDayRate, dailyRate, numberOfDays, depositAmount, deliveryFee } =
-    params;
+  const {
+    firstDayRate,
+    dailyRate,
+    numberOfDays,
+    depositAmount,
+    deliveryFee,
+    batteryFee = 0,
+  } = params;
   const rentalSubtotal = computeRentalSubtotal({
     firstDayRate,
     dailyRate,
     numberOfDays,
   });
-  const totalDue = roundToCents(rentalSubtotal + depositAmount + deliveryFee);
+  const totalDue = roundToCents(
+    rentalSubtotal + depositAmount + deliveryFee + batteryFee
+  );
 
   return {
     firstDayRate,
@@ -115,6 +135,7 @@ export function computeQuote(params: {
     rentalSubtotal,
     depositAmount,
     deliveryFee,
+    batteryFee,
     totalDue,
   };
 }

@@ -47,6 +47,8 @@ export async function POST(request: Request) {
     rentalSubtotal: Number(reservation.rentalSubtotal),
     depositAmount: Number(reservation.depositAmount),
     deliveryFee: Number(reservation.deliveryFee),
+    batteryRented: reservation.batteryRented,
+    batteryFee: Number(reservation.batteryFee),
     totalDue: Number(reservation.totalDue),
     paymentStatus: reservation.paymentStatus,
     holdExpiresAt: reservation.holdExpiresAt,

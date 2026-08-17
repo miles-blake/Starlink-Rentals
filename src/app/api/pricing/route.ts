@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   assertMinRentalDays,
+  computeBatteryFee,
   computeQuote,
   MinRentalDaysError,
 } from "@/lib/pricing";
@@ -11,6 +12,7 @@ import { getClientIp } from "@/lib/request-ip";
 
 const bodySchema = z.object({
   numberOfDays: z.number().int().positive(),
+  batteryRented: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -46,12 +48,19 @@ export async function POST(request: Request) {
     throw error;
   }
 
+  const batteryFee = computeBatteryFee({
+    batteryRented: parsed.data.batteryRented ?? false,
+    batteryDailyRate: Number(settings.batteryDailyRate),
+    numberOfDays: parsed.data.numberOfDays,
+  });
+
   const quote = computeQuote({
     firstDayRate: Number(settings.firstDayRate),
     dailyRate: Number(settings.dailyRate),
     numberOfDays: parsed.data.numberOfDays,
     depositAmount: Number(settings.depositAmount),
     deliveryFee: 0,
+    batteryFee,
   });
 
   return NextResponse.json(quote);

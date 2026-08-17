@@ -6,6 +6,7 @@ import { BLOCKING_STATUSES } from "@/lib/reservation-state-machine";
 import {
   MinRentalDaysError,
   assertMinRentalDays,
+  computeBatteryFee,
   computeQuote,
   numberOfDaysBetween,
 } from "@/lib/pricing";
@@ -26,6 +27,7 @@ const bodySchema = z.object({
   startDate: z.string().regex(DATE_ONLY, "Invalid date"),
   endDate: z.string().regex(DATE_ONLY, "Invalid date"),
   fulfillmentMethod: z.enum(["delivery", "pickup"]),
+  batteryRented: z.boolean().optional(),
   customerName: z.string().trim().min(1).max(200),
   customerEmail: z.string().trim().email().max(320),
   customerPhone: z.string().trim().min(7).max(30),
@@ -139,12 +141,20 @@ export async function POST(request: Request) {
     distanceMiles: place.distanceMiles,
   });
 
+  const batteryRented = input.batteryRented ?? false;
+  const batteryFee = computeBatteryFee({
+    batteryRented,
+    batteryDailyRate: Number(settings.batteryDailyRate),
+    numberOfDays,
+  });
+
   const quote = computeQuote({
     firstDayRate: Number(settings.firstDayRate),
     dailyRate: Number(settings.dailyRate),
     numberOfDays,
     depositAmount: Number(settings.depositAmount),
     deliveryFee,
+    batteryFee,
   });
 
   try {
@@ -221,6 +231,8 @@ export async function POST(request: Request) {
           rentalSubtotal: quote.rentalSubtotal,
           depositAmount: quote.depositAmount,
           deliveryFee: quote.deliveryFee,
+          batteryRented,
+          batteryFee: quote.batteryFee,
           totalDue: quote.totalDue,
           fulfillmentMethod: input.fulfillmentMethod,
           statusEvents: {
@@ -238,7 +250,7 @@ export async function POST(request: Request) {
       await sendEmail({
         to: reservation.customerEmail,
         subject: `Reservation received — ${reservation.publicId}`,
-        text: `Hi ${reservation.customerName},\n\nWe've received your reservation request for ${quote.numberOfDays} day${quote.numberOfDays === 1 ? "" : "s"} (${reservation.startDate.toDateString()} to ${reservation.endDate.toDateString()}). Your dates are held until ${reservation.holdExpiresAt!.toLocaleString()}.\n\nNext, sign the rental agreement and complete payment to confirm your reservation — you should already be on that page. Your code is ${reservation.publicId}; check status anytime at the status page using your code and email.${textOwnerEmailBlurb(settings.contactPhone, reservation.publicId)}\n\n— Starlink Rentals`,
+        text: `Hi ${reservation.customerName},\n\nWe've received your reservation request for ${quote.numberOfDays} day${quote.numberOfDays === 1 ? "" : "s"} (${reservation.startDate.toDateString()} to ${reservation.endDate.toDateString()}). Your dates are held until ${reservation.holdExpiresAt!.toLocaleString()}.\n\nReminder: the Starlink kit needs to stay connected to a power source the whole rental — a wall outlet works fine.${batteryRented ? " Your Jackery 300 battery rental is included for days without outlet access." : ""}\n\nNext, sign the rental agreement and complete payment to confirm your reservation — you should already be on that page. Your code is ${reservation.publicId}; check status anytime at the status page using your code and email.${textOwnerEmailBlurb(settings.contactPhone, reservation.publicId)}\n\n— Starlink Rentals`,
       });
     } catch (error) {
       console.error("Reservation-received email failed", error);
@@ -253,6 +265,8 @@ export async function POST(request: Request) {
         rentalSubtotal: quote.rentalSubtotal,
         depositAmount: quote.depositAmount,
         deliveryFee: quote.deliveryFee,
+        batteryRented,
+        batteryFee: quote.batteryFee,
         totalDue: quote.totalDue,
         fulfillmentMethod: reservation.fulfillmentMethod,
         holdExpiresAt: reservation.holdExpiresAt,
