@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Phase 6 — Communication, photos, notifications
+
+- **Text handoff**: an `sms:` deep-link "Text the owner" button (with a desktop QR fallback) built from `Setting.contactPhone` and the reservation code, on the confirmation screen, `/status`, and in renter emails; a matching "Text this renter" link plus a `ContactLog` note field on the admin reservation detail page.
+- **Condition photos**: upload at drop-off and return from the reservation detail page, stored in Vercel Blob and tagged by phase (new `ConditionPhoto` usage).
+- **Renter email suite**: reservation received, agreement signed (already existed), payment confirmed (already existed), drop-off scheduled, a same-day return reminder (new daily cron), and deposit refunded — all best-effort. Drop-off-scheduled and the return reminder attach a minimal `.ics` calendar file for the return date (`src/lib/ics.ts`).
+- **Setup guide / FAQ** page at `/faq`, linked from the confirmation screen and the drop-off email.
+- **Admin push notifications**: a `Notifier` service (`src/lib/notifier.ts`) behind a single Web Push channel (`web-push` package, self-generated VAPID keys — no third-party push service). New `PushSubscription` model; `/admin/notifications` to enable push on a device, toggle channels/events, set a quiet-hours window (UTC), and send a test notification. Immediate events fire from the sign/pay routes and the payment-confirm action; time-based events (hold expiring/expired, drop-off today, return due/overdue, deposit refund pending) fire from a new consolidated `/api/cron/daily-tasks` cron, deduped once per reservation per event per day via `NotificationLog`.
+- **Scope decisions, not oversights**: Twilio SMS (renter-facing and the admin critical-event fallback) and the Pushover/ntfy admin push channels from the blueprint are not implemented — the operator chose Web Push only for admin alerts and email-only for renters, avoiding a Twilio account/cost.
+- Added a full booking-flow Playwright e2e test (quote → reserve → sign → pay handoff → mark paid) with its own before/after cleanup; runs locally via `npm run test:e2e` against real services and the real database — not wired into the GitHub Actions CI job, since that would need production database credentials as repo secrets and would create/delete real rows on every PR run, which felt like a call worth flagging rather than making unilaterally.
+
 ## Phase 5 — Payments (manual Venmo)
 
 - `PaymentProvider` interface + `ManualVenmoProvider` (`src/lib/payment-provider.ts`): builds a Venmo pay link/QR target and human-readable instructions from an amount and reference, with a documented seam for a future automated provider (e.g. Braintree).

@@ -14,7 +14,8 @@ Next.js (App Router) + TypeScript, Tailwind + shadcn/ui, Prisma + PostgreSQL, Au
 npm install
 cp .env.example .env   # fill in DATABASE_URL, NEXTAUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD,
                         # GOOGLE_MAPS_SERVER_KEY, BASE_ADDRESS, RESEND_API_KEY, FROM_EMAIL,
-                        # BLOB_READ_WRITE_TOKEN
+                        # BLOB_READ_WRITE_TOKEN, NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY,
+                        # VAPID_SUBJECT
 npx prisma migrate dev
 npx prisma db seed     # creates the first admin user, and (once) the Setting row
 npm run dev
@@ -35,6 +36,8 @@ Open [http://localhost:3000](http://localhost:3000) for the public site (`/quote
 | `npm run typecheck`               | Route type generation + `tsc --noEmit`                        |
 | `npm run test`                    | Unit tests (Vitest)                                           |
 | `npm run test:e2e`                | End-to-end tests (Playwright, builds and boots the app first) |
+
+`test:e2e` needs a real `.env` (Google Maps, Resend, Blob) since it exercises the full booking flow against real services and the real database — it isn't part of the GitHub Actions CI job (which only runs lint/format/typecheck/unit-tests/build) and needs to be run locally before merging a change that touches the booking flow.
 
 ## Database
 
@@ -87,9 +90,20 @@ An admin then confirms the payment from the reservation detail page (`/admin/res
 
 Every status change goes through [src/lib/reservation-state-machine.ts](./src/lib/reservation-state-machine.ts), the single source of truth for which transitions are legal for which actor (admin/customer/system). An illegal transition (e.g. skipping straight from `confirmed` to `active`) is rejected server-side and every legal one writes a `StatusEvent`, so the history on a reservation's detail page is always a complete, ordered audit trail — not just the current status.
 
+## Communication & notifications
+
+- **Text the owner**: a scheme-`sms:` deep link built from `Setting.contactPhone` and the reservation's public code, shown on the confirmation screen, `/status`, and in renter emails ([src/lib/sms-link.ts](./src/lib/sms-link.ts), [src/components/text-owner-link.tsx](./src/components/text-owner-link.tsx)). On a wider screen it also renders a QR code so a desktop visitor can scan it with their phone. Nothing is stored server-side — tapping it just opens the renter's own Messages app.
+- **Text this renter**: the same idea in reverse, on the admin reservation detail page, plus a one-line `ContactLog` note field for keeping a manual record of what was discussed (the conversation itself lives in Messages, not the app).
+- **Condition photos**: uploaded from the reservation detail page at drop-off and return, stored in Vercel Blob (private) and tagged by phase (`ConditionPhoto.phase`).
+- **Renter emails**: reservation received, agreement signed, payment confirmed, drop-off scheduled (with an `.ics` calendar attachment for the return date — [src/lib/ics.ts](./src/lib/ics.ts)), a same-day return reminder (cron, also with the `.ics`), and deposit refunded. All best-effort — a delivery failure is logged, never blocks the underlying action.
+- **Setup guide / FAQ** at [`/faq`](./src/app/faq/page.tsx), linked from the confirmation screen and the drop-off email.
+- **Admin push notifications**: Web Push from the installed PWA only (no third-party push service — see the decision below), behind a `Notifier` abstraction ([src/lib/notifier.ts](./src/lib/notifier.ts)) so adding another channel later is additive. Enable it and send a test notification at `/admin/notifications`, which also has per-event toggles and a quiet-hours window (compared in UTC). Immediate events (agreement signed, payment awaiting confirmation, payment confirmed) fire from the relevant route/action; time-based events (hold expiring/expired, drop-off today, return due/overdue, deposit refund pending) fire from `/api/cron/daily-tasks`, deduped once per reservation per event per day via `NotificationLog`.
+
+**Scope decisions, not oversights:** the blueprint lists Twilio SMS (renter-facing, and an admin critical-event fallback) and Pushover/ntfy as admin push options — none of those are implemented here. The operator chose Web Push as the only admin channel and email-only for renters, to avoid a Twilio account/cost. See `.env.example`'s Phase 6 section if that changes later.
+
 ## Admin PWA
 
-The `/admin` app is an installable PWA (manifest, icons, service worker) so it can be added to an iPhone Home Screen and opened standalone — a prerequisite for iOS web push in a later phase. On iOS: open `/admin/login` in Safari, tap Share → Add to Home Screen.
+The `/admin` app is an installable PWA (manifest, icons, service worker) so it can be added to an iPhone Home Screen and opened standalone — required for iOS Web Push, which only works from a Home-Screen-installed app, never a plain Safari tab. On iOS: open `/admin/login` in Safari, tap Share → Add to Home Screen, open the app from its new icon, then enable notifications at `/admin/notifications`.
 
 ## Workflow
 
