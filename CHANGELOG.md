@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Phase 7 — Hardening and launch
+
+- **Admin login now requires a second factor**: email + password, then a 6-digit code emailed to the admin (10-minute expiry, single-use). 5 failed password-or-code attempts locks the account for 15 minutes (`AdminUser.otpCodeHash`/`otpCodeExpiresAt`/`failedLoginAttempts`/`lockedUntil`, `src/lib/admin-login-security.ts`). The unused legacy `otpSecret` field (implies TOTP, not email OTP) was left untouched rather than repurposed.
+- **Security headers**: CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, and HSTS set for every route (`next.config.ts`). No nonce-based CSP — that would force every page into dynamic rendering; `script-src` allows `'unsafe-inline'` because the App Router streams RSC payloads via inline scripts even in production.
+- **CSRF**: documented (not newly built) — every admin mutation is already a Server Action, which Next.js protects with a built-in Origin-vs-Host check.
+- **Legal pages**: `/terms` (including the live, admin-editable cancellation policy) and `/privacy`, linked from a shared footer on every public page.
+- Fixed stale "Reservations open in a future phase of the build" copy left over on the homepage from Phase 0/1.
+
 ## Phase 6 — Communication, photos, notifications
 
 - **Text handoff**: an `sms:` deep-link "Text the owner" button (with a desktop QR fallback) built from `Setting.contactPhone` and the reservation code, on the confirmation screen, `/status`, and in renter emails; a matching "Text this renter" link plus a `ContactLog` note field on the admin reservation detail page.
