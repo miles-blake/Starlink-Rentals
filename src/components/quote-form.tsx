@@ -35,6 +35,7 @@ interface PricingResponse {
   numberOfDays: number;
   rentalSubtotal: number;
   depositAmount: number;
+  batteryFee: number;
   totalDue: number;
 }
 
@@ -46,6 +47,8 @@ interface ReservationResponse {
   rentalSubtotal: number;
   depositAmount: number;
   deliveryFee: number;
+  batteryRented: boolean;
+  batteryFee: number;
   totalDue: number;
   fulfillmentMethod: "delivery" | "pickup";
   holdExpiresAt: string;
@@ -98,10 +101,14 @@ export function QuoteForm() {
   const [pricing, setPricing] = useState<AsyncState<PricingResponse>>({
     status: "idle",
   });
+  const [availability, setAvailability] = useState<
+    AsyncState<{ available: boolean }>
+  >({ status: "idle" });
 
   const [fulfillmentMethod, setFulfillmentMethod] = useState<
     "delivery" | "pickup"
   >("delivery");
+  const [batteryRented, setBatteryRented] = useState(false);
 
   const [step, setStep] = useState<
     "quote" | "details" | "sign" | "pay" | "confirmed"
@@ -193,7 +200,7 @@ export function QuoteForm() {
         const res = await fetch("/api/pricing", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ numberOfDays }),
+          body: JSON.stringify({ numberOfDays, batteryRented }),
           signal: controller.signal,
         });
         const data = await res.json();
@@ -210,7 +217,43 @@ export function QuoteForm() {
       }
     })();
     return () => controller.abort();
-  }, [numberOfDays]);
+  }, [numberOfDays, batteryRented]);
+
+  // Steers the customer away from already-reserved dates before they fill in
+  // contact info — the authoritative, race-safe check still happens
+  // server-side in POST /api/reservations at creation time.
+  useEffect(() => {
+    if (numberOfDays === null || numberOfDays < 1 || !dateRange?.from) return;
+    const startDate = dateRange.from;
+    const endDate = dateRange.to!;
+    const controller = new AbortController();
+    (async () => {
+      setAvailability({ status: "loading" });
+      try {
+        const res = await fetch("/api/availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: formatDateOnly(startDate),
+            endDate: formatDateOnly(endDate),
+          }),
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setAvailability({
+            status: "error",
+            message: data.error ?? "Could not check availability.",
+          });
+          return;
+        }
+        setAvailability({ status: "ready", data });
+      } catch {
+        // Aborted or network error — a newer request may already be in flight.
+      }
+    })();
+    return () => controller.abort();
+  }, [numberOfDays, dateRange]);
 
   async function submitReservation() {
     if (!selectedAddress || !dateRange?.from || !dateRange?.to) return;
@@ -225,6 +268,7 @@ export function QuoteForm() {
           startDate: formatDateOnly(dateRange.from),
           endDate: formatDateOnly(dateRange.to),
           fulfillmentMethod,
+          batteryRented,
           customerName,
           customerEmail,
           customerPhone,
@@ -258,6 +302,9 @@ export function QuoteForm() {
     fulfillmentMethod === "pickup" || !deliveryAvailable
       ? 0
       : eligibility.data.deliveryFee;
+
+  const datesUnavailable =
+    availability.status === "ready" && !availability.data.available;
 
   const showQuote =
     eligibility.status === "ready" &&
@@ -335,6 +382,16 @@ export function QuoteForm() {
                 : currency.format(reservation.data.deliveryFee)}
             </span>
           </div>
+          {reservation.data.batteryRented ? (
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                Battery (Jackery 300)
+              </span>
+              <span className="tabular-nums">
+                {currency.format(reservation.data.batteryFee)}
+              </span>
+            </div>
+          ) : null}
           <div className="border-border mt-1 flex items-center justify-between border-t pt-3 text-base font-semibold">
             <span>Total due</span>
             <span className="tabular-nums">
@@ -342,6 +399,13 @@ export function QuoteForm() {
             </span>
           </div>
         </div>
+        <p className="text-muted-foreground text-xs">
+          Reminder: keep the dish connected to a power source the whole rental —
+          a wall outlet works fine.
+          {reservation.data.batteryRented
+            ? " Your Jackery 300 battery is included for days without outlet access."
+            : ""}
+        </p>
         <TextOwnerLink publicId={reservation.data.publicId} />
         <div className="flex items-center justify-center gap-3 text-xs">
           <Link
@@ -392,7 +456,8 @@ export function QuoteForm() {
                 ? currency.format(
                     pricing.data.rentalSubtotal +
                       pricing.data.depositAmount +
-                      deliveryFee
+                      deliveryFee +
+                      pricing.data.batteryFee
                   )
                 : ""}
             </span>
@@ -572,8 +637,14 @@ export function QuoteForm() {
         </Popover>
         {dateRangeError ? (
           <p className="text-destructive text-xs">{dateRangeError}</p>
+        ) : datesUnavailable ? (
+          <p className="text-destructive text-xs">
+            Those dates are already reserved. Pick different dates.
+          </p>
         ) : pricing.status === "error" ? (
           <p className="text-destructive text-xs">{pricing.message}</p>
+        ) : availability.status === "error" ? (
+          <p className="text-destructive text-xs">{availability.message}</p>
         ) : null}
       </div>
 
@@ -612,6 +683,25 @@ export function QuoteForm() {
         </div>
       ) : null}
 
+      <div className="border-border bg-card flex flex-col gap-2 rounded-lg border p-4">
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={batteryRented}
+            onChange={(e) => setBatteryRented(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Rent a battery (Jackery 300) — +$10/day
+            <span className="text-muted-foreground block text-xs">
+              The Starlink kit needs to stay connected to a power source the
+              whole rental. If you won&apos;t have outlet access the whole time,
+              add a battery.
+            </span>
+          </span>
+        </label>
+      </div>
+
       {showQuote && pricing.status === "ready" ? (
         <div className="border-border bg-card flex flex-col gap-3 rounded-lg border p-4">
           <div className="flex items-center justify-between text-sm">
@@ -637,13 +727,24 @@ export function QuoteForm() {
               {deliveryFee === 0 ? "Free" : currency.format(deliveryFee)}
             </span>
           </div>
+          {batteryRented ? (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Battery (Jackery 300)
+              </span>
+              <span className="tabular-nums">
+                {currency.format(pricing.data.batteryFee)}
+              </span>
+            </div>
+          ) : null}
           <div className="border-border mt-1 flex items-center justify-between border-t pt-3 text-base font-semibold">
             <span>Total due</span>
             <span className="tabular-nums">
               {currency.format(
                 pricing.data.rentalSubtotal +
                   pricing.data.depositAmount +
-                  deliveryFee
+                  deliveryFee +
+                  pricing.data.batteryFee
               )}
             </span>
           </div>
@@ -651,9 +752,12 @@ export function QuoteForm() {
             type="button"
             size="lg"
             className="mt-1"
+            disabled={datesUnavailable || availability.status !== "ready"}
             onClick={() => setStep("details")}
           >
-            Continue
+            {availability.status === "loading"
+              ? "Checking availability…"
+              : "Continue"}
           </Button>
         </div>
       ) : null}
