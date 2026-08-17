@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
-import { formatUsPhone } from "@/lib/format";
 import { buildOwnerSmsUrl } from "@/lib/sms-link";
 
 export function TextOwnerLink(props: { publicId: string }) {
@@ -41,20 +40,17 @@ export function TextOwnerLink(props: { publicId: string }) {
       >
         Text the owner
       </Button>
-      <div className="hidden flex-col items-center gap-1 sm:flex">
-        {qrDataUrl && (
-          // eslint-disable-next-line @next/next/no-img-element -- a data: URL, not an optimizable remote image
+      {qrDataUrl && (
+        <div className="hidden sm:block">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL, not an optimizable remote image */}
           <img
             src={qrDataUrl}
             alt="Scan to text the owner"
             width={96}
             height={96}
           />
-        )}
-        <span className="text-muted-foreground text-xs">
-          {formatUsPhone(contactPhone)}
-        </span>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
