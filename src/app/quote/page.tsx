@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { QuoteForm } from "@/components/quote-form";
+import { LegalFooter } from "@/components/legal-footer";
 
 export const metadata: Metadata = {
   title: "Get a quote — Starlink Rentals",
@@ -21,6 +22,8 @@ export default function QuotePage() {
       <main className="flex flex-1 flex-col items-center px-6 py-10">
         <QuoteForm />
       </main>
+
+      <LegalFooter />
     </div>
   );
 }

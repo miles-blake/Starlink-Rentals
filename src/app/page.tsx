@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { LegalFooter } from "@/components/legal-footer";
 
 export default function Home() {
   return (
@@ -48,16 +49,10 @@ export default function Home() {
           >
             Get a quote
           </Button>
-          <p className="text-muted-foreground font-mono text-xs">
-            Reservations open in a future phase of the build.
-          </p>
         </div>
       </main>
 
-      <footer className="text-muted-foreground relative z-10 px-6 py-6 text-center font-mono text-xs sm:px-10">
-        Starlink Rentals is an independent rental service and is not affiliated
-        with Starlink or SpaceX.
-      </footer>
+      <LegalFooter />
     </div>
   );
 }
