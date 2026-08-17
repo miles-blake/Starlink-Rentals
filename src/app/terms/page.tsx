@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: "Terms & cancellation policy — Starlink Rentals",
 };
 
+// Reads the cancellation policy live on every request rather than baking it
+// into the static build, since it's editable from /admin/settings.
+export const dynamic = "force-dynamic";
+
 export default async function TermsPage() {
   const setting = await prisma.setting.findUnique({ where: { id: 1 } });
   const cancellationPolicyText =
