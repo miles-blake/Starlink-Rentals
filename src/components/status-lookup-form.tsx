@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentHandoff } from "@/components/payment-handoff";
+import { TextOwnerLink } from "@/components/text-owner-link";
 
 interface ReservationStatus {
   publicId: string;
@@ -153,6 +154,7 @@ export function StatusLookupForm() {
             Pay now
           </Button>
         ) : null}
+        <TextOwnerLink publicId={r.publicId} />
         <Button
           type="button"
           variant="outline"

@@ -22,6 +22,14 @@ export function formatCalendarDate(date: Date | string): string {
 
 // Scheduling/event timestamps are real moments in time, not calendar dates
 // — show them in the viewer's own local timezone.
+// Formats a stored +1XXXXXXXXXX number for display. Falls back to the raw
+// value for any shape it doesn't recognize (e.g. non-US numbers).
+export function formatUsPhone(phone: string): string {
+  const match = phone.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  if (!match) return phone;
+  return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
+}
+
 export function formatDateTime(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleString(undefined, {
